@@ -1,0 +1,6 @@
+# Keep every file exactly as committed. The snapshot in src/ and supabase/migrations/
+# was verified byte-for-byte against the live database; letting Git rewrite line
+# endings on checkout would silently break that match.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

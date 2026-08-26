@@ -1,0 +1,250 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Daily Plan Code Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#0f1214; --panel:#161a1d; --well:#0b0e10; --line:#252b30; --line2:#1c2226;
+  --ink:#e9edef; --body:#c2cace; --mut:#8e999f; --faint:#6b757b;
+  --cork:#c98b49; --red:#dd6b60; --amber:#d2a04a; --grn:#6fb894;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Fraunces",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--body);font-family:var(--sans);
+  font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.page{max-width:660px;margin:0 auto;padding:38px 20px 90px}
+h1,h2,h3{font-family:var(--serif);color:var(--ink);text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,8.5vw,46px);font-weight:600;line-height:1.04;letter-spacing:-.02em}
+h2{font-size:clamp(25px,6vw,31px);font-weight:600;line-height:1.12;letter-spacing:-.015em}
+h3{font-size:19px;font-weight:600;line-height:1.25}
+p{margin:0}
+a{color:var(--cork)}
+.kicker{font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--cork)}
+.stand{font-size:17.5px;line-height:1.6;color:var(--mut);margin-top:20px;max-width:58ch}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+.masthead{display:flex;flex-direction:column;gap:14px;padding-bottom:34px}
+section{padding:44px 0 4px;border-top:1px solid var(--line2)}
+.sechead{display:flex;flex-direction:column;gap:11px;margin-bottom:26px}
+.lede{font-size:16.5px;color:var(--mut);max-width:60ch}
+
+/* verdict list */
+.verdict{display:flex;flex-direction:column;gap:0;margin-top:6px}
+.vrow{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--line2)}
+.vrow:last-child{border-bottom:0}
+.vnum{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cork);padding-top:4px;flex:0 0 22px}
+.vtxt strong{color:var(--ink);font-weight:600}
+
+/* findings */
+.finds{display:flex;flex-direction:column;margin-top:22px}
+.f{display:grid;grid-template-columns:34px 1fr;gap:0 14px;padding:15px 0;border-bottom:1px solid var(--line2)}
+.f:last-child{border-bottom:0}
+.fn{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--faint);padding-top:5px;
+  font-variant-numeric:tabular-nums}
+.fb{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fh{font-size:16.5px;color:var(--ink);font-weight:500;line-height:1.45}
+.fw{font-size:15px;color:var(--mut);line-height:1.6}
+.sev{align-self:flex-start;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;padding:3px 8px;border-radius:5px;border:1px solid;margin-top:2px}
+.c1{color:var(--red);border-color:rgba(221,107,96,.4);background:rgba(221,107,96,.08)}
+.c2{color:var(--amber);border-color:rgba(210,160,74,.35);background:rgba(210,160,74,.07)}
+.c3{color:var(--faint);border-color:var(--line);background:rgba(255,255,255,.02)}
+
+/* screen frames */
+.wellwrap{margin:22px 0 4px}
+.wellcap{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+.wellcap s{text-decoration:none;flex:1;height:1px;background:var(--line2)}
+.well{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--well);position:relative}
+.scroll{position:relative}
+.appui{position:relative;min-height:100%}
+.scroll{height:460px;overflow-y:auto;overscroll-behavior:contain}
+.scroll::-webkit-scrollbar{width:0}
+.hintline{font-size:13px;color:var(--faint);margin-top:9px;font-style:italic}
+.pair{display:flex;gap:14px;margin-top:24px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}
+.pair>div{flex:0 0 min(342px,86%);scroll-snap-align:start}
+.pair .well{border-radius:16px}
+.pair .scroll{height:520px}
+.pair.cmp .scroll{height:790px}
+.pair.cmp>div{flex:0 0 min(320px,84%)}
+.plabel{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:8px}
+
+/* directions */
+.dir{padding:34px 0;border-bottom:1px solid var(--line2)}
+.dir:last-of-type{border-bottom:0}
+.dtag{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--cork)}
+.dname{margin:9px 0 12px}
+.dthesis{font-size:16.5px;color:var(--body);max-width:60ch}
+.dgrid{display:grid;gap:0;margin:22px 0 6px;border-top:1px solid var(--line2)}
+.dgrid div{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line2);
+  font-size:15px;color:var(--mut)}
+.dgrid b{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);padding-top:3px}
+.dgrid span{color:var(--body)}
+
+.callout{border-left:2px solid var(--cork);background:var(--panel);border-radius:0 12px 12px 0;
+  padding:18px 20px;margin-top:26px;font-size:16px;color:var(--body)}
+.callout b{color:var(--ink);font-weight:600}
+.endnote{margin-top:46px;padding-top:24px;border-top:1px solid var(--line2);font-size:14px;color:var(--faint)}
+@media (min-width:620px){ .pair>div{flex:0 0 306px} }
+</style>
+<style>
+.screen{padding:40px 0 8px;border-top:1px solid var(--line2)}
+.screen:first-of-type{border-top:0}
+.snum{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--cork)}
+.sname{margin:8px 0 10px}
+.sblurb{font-size:16px;color:var(--mut);max-width:58ch}
+.frame{max-width:392px;margin:22px 0 6px;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:#0a0e15;position:relative}
+.frame .scroll{height:540px}
+.notes{display:flex;flex-direction:column;margin-top:20px}
+.note{display:grid;grid-template-columns:16px 1fr;gap:0 12px;padding:11px 0;border-bottom:1px solid var(--line2);font-size:15.5px;line-height:1.55;color:var(--mut)}
+.note:last-child{border-bottom:0}
+.note em{font-style:italic;color:inherit;font-family:inherit;font-size:inherit}
+.note>em{font-style:normal;color:var(--cork);font-family:var(--mono);font-size:12px;padding-top:4px}
+.note b{color:var(--ink);font-weight:600}
+.map{display:grid;gap:0;border-top:1px solid var(--line2);margin-top:8px}
+.map>div{display:grid;grid-template-columns:1fr;gap:6px;padding:16px 0;border-bottom:1px solid var(--line2)}
+.map .said{font-size:14px;color:var(--cork);font-family:var(--mono);letter-spacing:.02em}
+.map .did{font-size:16px;color:var(--body);line-height:1.55}
+.map .did b{color:var(--ink);font-weight:600}
+.rules{display:grid;gap:0;border-top:1px solid var(--line2);margin-top:18px}
+.rules>div{display:grid;grid-template-columns:104px 1fr;gap:14px;padding:13px 0;border-bottom:1px solid var(--line2);font-size:15px;color:var(--body)}
+.rules b{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding-top:4px}
+</style><style>
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:22px}
+.sw{border:1px solid var(--line2);border-radius:13px;overflow:hidden}
+.sw i{display:block;height:56px}
+.sw div{padding:10px 12px 12px}
+.sw b{display:block;font-size:14px;color:var(--ink);font-weight:600}
+.sw code{display:block;font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:4px;letter-spacing:.04em}
+.sw p{font-size:12.5px;color:var(--mut);line-height:1.5;margin-top:7px}
+.stage{border:1px solid var(--line2);border-radius:18px;padding:22px 20px;margin-top:20px;background:rgba(255,255,255,.012)}
+.stage.par{border-color:rgba(201,139,73,.4)}
+.sthead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.scode{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.14em;color:var(--cork)}
+.spar{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+ color:var(--cork);border:1px solid rgba(201,139,73,.4);border-radius:5px;padding:2px 7px}
+.stitle{font-family:var(--serif);font-size:23px;font-weight:600;color:var(--ink);letter-spacing:-.015em;line-height:1.2;width:100%}
+.slede{font-size:15.5px;color:var(--mut);line-height:1.6;margin-top:10px}
+.slist{display:flex;flex-direction:column;margin-top:16px}
+.slist>div{display:grid;grid-template-columns:14px 1fr;gap:0 12px;padding:10px 0;border-bottom:1px solid var(--line2);
+ font-size:15px;line-height:1.55;color:var(--mut)}
+.slist>div:last-child{border-bottom:0}
+.slist em{font-style:normal;color:var(--cork);padding-top:3px;font-size:13px}
+.slist b{color:var(--ink);font-weight:600}
+.stest{margin-top:18px;padding:14px 15px;border-radius:12px;background:rgba(201,139,73,.07);
+ border-left:2px solid var(--cork);font-size:14.5px;line-height:1.6;color:var(--body)}
+.stest b{color:var(--ink);font-weight:600;display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+ text-transform:uppercase;color:var(--cork);margin-bottom:7px}
+.warn{margin-top:16px;padding:14px 15px;border-radius:12px;border:1px solid rgba(221,107,96,.3);
+ background:rgba(221,107,96,.06);font-size:14.5px;line-height:1.6;color:var(--body)}
+.warn b{color:var(--red);font-weight:600}
+.mono{font-family:var(--mono);font-size:13px;color:var(--body);background:rgba(255,255,255,.03);
+ border:1px solid var(--line2);border-radius:8px;padding:2px 6px}
+</style><style>
+.find{border:1px solid var(--line2);border-radius:16px;padding:20px 18px;margin-top:18px}
+.find.crit{border-color:rgba(221,107,96,.35);background:rgba(221,107,96,.04)}
+.fhead{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:4px}
+.fid{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.12em;color:var(--cork)}
+.fsev{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+ padding:2px 7px;border-radius:5px;border:1px solid}
+.s1{color:var(--red);border-color:rgba(221,107,96,.4);background:rgba(221,107,96,.08)}
+.s2{color:var(--amber);border-color:rgba(210,160,74,.35)}
+.s3{color:var(--faint);border-color:var(--line)}
+.ft{font-family:var(--serif);font-size:21px;font-weight:600;color:var(--ink);letter-spacing:-.015em;width:100%;line-height:1.25;margin-top:2px}
+.fbody{font-size:15.5px;color:var(--mut);line-height:1.62;margin-top:12px}
+.fbody b{color:var(--ink);font-weight:600}
+.fbody code,.fx code{font-family:var(--mono);font-size:12.5px;background:rgba(255,255,255,.04);
+ border:1px solid var(--line2);border-radius:6px;padding:1px 5px;color:var(--body)}
+.eviD{margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.025);
+ border-left:2px solid var(--line);font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--body);
+ overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.fx{margin-top:14px;padding:13px 15px;border-radius:11px;background:rgba(201,139,73,.07);
+ border-left:2px solid var(--cork);font-size:15px;line-height:1.6;color:var(--body)}
+.fx>b:first-child{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+ color:var(--cork);margin-bottom:6px}
+.fx b{color:var(--ink);font-weight:600}
+.good{display:grid;grid-template-columns:20px 1fr;gap:0 12px;padding:12px 0;border-bottom:1px solid var(--line2);
+ font-size:15.5px;line-height:1.6;color:var(--mut)}
+.good:last-child{border-bottom:0}
+.good em{font-style:normal;color:var(--grn);padding-top:2px}
+.good b{color:var(--ink);font-weight:600}
+.ordr{display:grid;grid-template-columns:92px 1fr;gap:14px;padding:13px 0;border-bottom:1px solid var(--line2);font-size:15px;color:var(--body)}
+.ordr b{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--cork);padding-top:4px}
+</style><div class="page">
+<div class="masthead">
+<div class="kicker">Engineering review &middot; 24 August 2026</div>
+<h1>Daily&nbsp;Plan<br>Code Review</h1>
+<p class="stand">You were right to push back. I read the app, the coach function, the database policies and the service worker before writing this. There is one thing I would fix today, one live bug, and a handful of guardrails missing.</p>
+</div>
+<hr class="rule">
+
+<section>
+<div class="sechead"><h2>First, what I got wrong</h2></div>
+<p class="dthesis">&ldquo;No framework, no build step, no bundler&rdquo; was jargon, and worse, it pointed at the wrong thing. Those three words describe <em>tooling</em>, and your app genuinely does not need any of it &mdash; but I wrote it as though simple meant unguarded, and that is not what good simple code looks like.</p>
+<div class="callout"><b>What simple should actually mean here:</b> the code is easy to read and easy to change, and it <b>still checks its work</b>. Errors are caught and shown. Inputs are validated. Anything non-obvious carries a comment saying <em>why</em>. Failures are visible rather than silent.<br><br>Judged that way, this app is not over-engineered. In the places that matter it is <b>under</b>-engineered.</p></div>
+<p class="dthesis" style="margin-top:22px">Two of those jargon words are worth one plain sentence each, because they are actually good decisions you made. <b>No build step</b> means the file you edit is the file that runs &mdash; nothing has to be compiled or published first, which is why a change can reach your phone in seconds. <b>No framework</b> means no large third-party library sitting between your code and the browser, which for an app this size is the right call. Both stay.</p>
+</section>
+
+<section>
+<div class="sechead"><h2>What is already right</h2>
+<p class="lede">Worth saying plainly, because the findings below are blunt.</p></div>
+<div class="notes">
+<div class="good"><em>&#10003;</em><div><b>The architecture suits the problem.</b> Two people, no login, one screen at a time. A static page plus a database plus a logic file you can swap without a deploy is a genuinely smart fit &mdash; most people would have reached for something ten times heavier.</div></div>
+<div class="good"><em>&#10003;</em><div><b>Schema changes are tracked.</b> Eight named migrations, in order, from the initial schema through to the paused-exercise state. That is real discipline and most projects at this stage do not have it.</div></div>
+<div class="good"><em>&#10003;</em><div><b>The API key is handled correctly.</b> The Anthropic key lives in the function&rsquo;s server-side secrets and the coach runs on the server. It is never in the page. That is exactly right, and it is the mistake this kind of project usually makes.</div></div>
+<div class="good"><em>&#10003;</em><div><b>The coach cannot act on its own.</b> Proposals are capped at five, nothing applies until you tick it, and the budget logic degrades to a cheaper model before it stops. Good safety design.</div></div>
+<div class="good"><em>&#10003;</em><div><b>The per-date reset logic is carefully thought through.</b> Checklists, logs and overrides all key on a date, and the template stays clean. That is the hard part of a daily planner and it is right.</div></div>
+</div>
+</section>
+
+<section>
+<div class="sechead"><h2>What needs fixing</h2>
+<p class="lede">Ordered by what I would do first.</p></div><div class="find crit"><div class="fhead"><span class="fid">F1</span><span class="fsev s1">Fix first</span><span class="ft">The database is open to anyone with the link</span></div><div class="fbody">Every table has a rule that says &ldquo;anyone may read, write and <b>delete</b> anything&rdquo;. The key the app uses to talk to the database is in the page source, where anyone can read it. So the private link is not a lock &mdash; it only decides <em>which</em> person the app shows you. Anyone who ever gets the URL could, with a little effort, read or wipe both your plan and Gong&rsquo;s, including every logged set and every notification subscription.<br><br>Your actual risk today is low &mdash; nobody has the link but you two. But the cost if it happened is everything, and the fix is cheap. I would not add a second person to this app until it is closed.</div><div class="eviD">All 12 data tables carry policies of the form:
+
+  SELECT / INSERT / UPDATE / DELETE
+  to role "anon"
+  USING (true)
+
+"USING (true)" means: no condition. Always allowed.</div><div class="fx"><b>The fix</b>Two options. The thorough one: stop letting the browser talk to the tables directly, and put reads and writes behind a small server function that takes the private link and uses a privileged key &mdash; the link then becomes a real credential. The quick one, worth doing regardless and today: <b>remove delete permission entirely</b> from the browser, and scope every write to the person the link identifies. Deleting is the only irreversible operation in the app.</div></div><div class="find crit"><div class="fhead"><span class="fid">F2</span><span class="fsev s1">Fix first</span><span class="ft">Nothing checks whether a save actually worked &mdash; and one already fails</span></div><div class="fbody">Roughly twenty places in the app write to the database. <b>Not one of them looks at whether the write succeeded.</b> The screen redraws as though it did. If the network drops, or a permission blocks it, the app shows you the new value and the database never received it. You would find out days later, or never.<br><br><b>This is not hypothetical.</b> The <code>workout</code> table &mdash; the routines themselves &mdash; is the one table that was never given write permission for the browser. Creating a new routine, renaming one, and changing its focus are all denied by the database right now, and because nothing checks, they fail in complete silence.</div><div class="eviD">exercise / block / goal tables:  SELECT INSERT UPDATE DELETE
+workout table:                    SELECT   only
+
+But app.js calls:
+  sb.from("workout").insert(...)   &#8594; denied, silently
+  sb.from("workout").update(...)   &#8594; denied, silently</div><div class="fx"><b>The fix</b>Worth testing yourself in a minute: rename a routine, reload, and see whether the name held.<br><br>Then: <b>one small wrapper that every write goes through.</b> It saves, checks the result, and on failure puts the screen back the way it was and shows a short message. Around fifteen lines, written once, and it removes an entire category of bug from every stage that follows. This is the clearest example of a guardrail that is not over-engineering &mdash; and the missing permission gets added at the same time.</div></div><div class="find"><div class="fhead"><span class="fid">F3</span><span class="fsev s1">Fix first</span><span class="ft">A quote mark in a name breaks the editor</span></div><div class="fbody">The function that makes text safe to put on screen handles three dangerous characters but not quote marks. Those values then get placed inside HTML attributes, where a quote mark ends the attribute early and the rest of the name spills into the page as markup. Name an exercise <code>3&quot; band pull</code> and the editor breaks.</div><div class="eviD">esc() replaces:  &  <  >
+esc() misses:    "  '
+
+and the result is used as:  value="${esc(e.name)}"</div><div class="fx"><b>The fix</b>Two more replacements in that one function. A minute of work, and it stops a whole family of odd bugs that would otherwise look random.</div></div><div class="find"><div class="fhead"><span class="fid">F4</span><span class="fsev s2">Worth fixing</span><span class="ft">&ldquo;Today&rdquo; is decided in two different places</span></div><div class="fbody">The app asks the phone what day it is. The reminder service asks your saved timezone. Those two already disagreed once &mdash; that is what put a 1pm lunch reminder at 1am. It was patched by syncing the timezone, but the underlying split is still there. Travel, or a session that runs past midnight, and a tick can land on a different date than the reminder believes.</div><div class="fx"><b>The fix</b>One function that answers &ldquo;what date is it for this person&rdquo;, used by the app and the reminder service alike. Pick the profile timezone as the single rule, since that is the one that survives travel.</div></div><div class="find"><div class="fhead"><span class="fid">F5</span><span class="fsev s2">Worth fixing</span><span class="ft">The app cannot update itself</span></div><div class="fbody">This is why &ldquo;close and reopen the app&rdquo; is a step in every release note. The offline cache is named once and never renamed, and the logic file is requested at a fixed address, so the phone has no way to know a new version exists. It is a workaround standing in for a missing mechanism.</div><div class="fx"><b>The fix</b>Stamp a version on the logic file&rsquo;s address and rename the cache each release. The app then notices the change and refreshes itself, and the manual step disappears.</div></div><div class="find"><div class="fhead"><span class="fid">F6</span><span class="fsev s2">Worth fixing</span><span class="ft">When something fails, nobody finds out</span></div><div class="fbody">There is no message on screen, no log anywhere, no record. On a phone, with no console open, a failure is completely invisible. Combined with F2 this is how data goes missing without anyone noticing.</div><div class="fx"><b>The fix</b>A short message on screen when a save fails is enough for one user &mdash; you do not need a monitoring system. The point is that silence stops being the failure mode.</div></div><div class="find"><div class="fhead"><span class="fid">F7</span><span class="fsev s2">Worth fixing</span><span class="ft">Your data has no backup</span></div><div class="fbody">The app&rsquo;s code gets copied before every change &mdash; that is in the build order. <b>Your plan, your routines, your logs and your goals do not.</b> One bad command, or F1 going wrong, and there is no way back. Months of logged sessions are the thing the coach&rsquo;s value is built on.</div><div class="fx"><b>The fix</b>A scheduled job once a week that writes a snapshot of everything to a file in storage. Small, boring, and the thing you will be glad of exactly once.</div></div><div class="find"><div class="fhead"><span class="fid">F8</span><span class="fsev s3">Polish</span><span class="ft">The whole screen redraws on every tap</span></div><div class="fbody">Ticking one checkbox rebuilds the entire page and re-attaches every handler. At this size that is fine and I would not change the approach &mdash; it is simple and it works. But it loses your scroll position, which will be much more noticeable on the new workout screen where you are thirteen exercises down.</div><div class="fx"><b>The fix</b>Keep the full redraw. Remember the scroll position and restore it afterwards &mdash; a few lines, and the screen stops jumping.</div></div><div class="find"><div class="fhead"><span class="fid">F9</span><span class="fsev s3">Polish</span><span class="ft">One 57,000-character file with no signposts</span></div><div class="fbody">Not a crisis, and splitting it into many files would cost more than it saves. But there are no section markers, and the entire stylesheet is a single text block inside the same file as the logic.</div><div class="fx"><b>The fix</b>Section banners and a short index comment at the top, and move the stylesheet to its own file alongside the logic. Both are the same kind of change: nothing behaves differently, everything gets easier to find.</div></div></section>
+
+<section>
+<div class="sechead"><h2>What this means for the build order</h2>
+<p class="lede">Three of these come before any redesign work, because every later stage writes to the database.</p></div>
+<div class="callout"><b>I have added a Stage R0 &mdash; Foundations.</b> It is a day of unglamorous work and it makes everything after it safer: close the delete permission and scope the writes (F1), add the save wrapper and the missing routine permission (F2), fix the escaping (F3), and set up the weekly data backup (F7). Nothing visible changes. Everything after it becomes harder to break.</div>
+<div style="margin-top:24px">
+<div class="ordr"><b>R0</b><span>Foundations &mdash; F1, F2, F3, F7. New. Do this first.</span></div>
+<div class="ordr"><b>R1</b><span>Design system + Today.</span></div>
+<div class="ordr"><b>R2</b><span>The workout screen &mdash; plus F4 (one definition of today) and F8 (scroll position).</span></div>
+<div class="ordr"><b>R3</b><span>Demos. Unchanged.</span></div>
+<div class="ordr"><b>R4</b><span>The finish recap. Unchanged.</span></div>
+<div class="ordr"><b>R5</b><span>Train hub and editor &mdash; already carried the logged-sets safeguard.</span></div>
+<div class="ordr"><b>R6</b><span>Coach. Unchanged.</span></div>
+<div class="ordr"><b>R7</b><span>You and install &mdash; plus F5 (the app updating itself).</span></div>
+<div class="ordr"><b>Ongoing</b><span>F6 and F9 fold into whichever stage touches that code.</span></div>
+</div>
+</section>
+
+<section>
+<div class="sechead"><h2>The rule, rewritten</h2></div>
+<p class="dthesis">Replacing what I wrote badly the first time. This now sits at the top of the build order:</p>
+<div class="callout" style="margin-top:20px"><b>Write it simple, and write it safe.</b><br><br>
+<b>Keep it plain</b> &mdash; ordinary functions with clear names, no compile step, no heavy libraries, no abstraction invented before it is needed. A longer obvious function beats a shorter clever one.<br><br>
+<b>And check the work</b> &mdash; every save is checked and reverts visibly if it fails; input is validated where it enters; text is escaped properly; permissions are scoped to the person; anything irreversible asks first; anything non-obvious carries a comment explaining <em>why</em>.<br><br>
+Simple is about how much there is to understand. It was never about leaving out the parts that keep it correct.</div>
+</section>
+<div class="endnote">Findings verified directly against the live project: database policies, the app source, the coach function and the service worker. No changes were made.</div>
+</div>
+</body></html>
