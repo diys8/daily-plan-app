@@ -4,7 +4,7 @@ import {
   dayFor, workoutByCode, orderedBlocks, currentIdx,
   toggleItem, toggleExercise, setFeel, resumeExercise, markBlockDone,
   toggleNotify, enableReminders, allReminders, remOn, anyNotify,
-  applyScope, reloadAndRender, sb, deleteBlockCascade
+  applyScope, reloadAndRender, sb, save, deleteBlockCascade
 } from "./db.js";
 
 function checklistView(b) {
@@ -174,11 +174,11 @@ async function onSaveProfile() {
   const con = document.getElementById("pf-con").value.trim();
   const sports = document.getElementById("pf-sports").value.trim();
   const level = document.getElementById("pf-level").value.trim();
-  await sb.from("person").update({ equipment: equip, constraints: con, sports, level }).eq("id", S.DATA.person.id);
+  await save(sb.from("person").update({ equipment: equip, constraints: con, sports, level }).eq("id", S.DATA.person.id));
   const goals = [...document.querySelectorAll("#pf-goals .goaltxt")].map(i => ({ id: i.dataset.id ? +i.dataset.id : null, text: i.value.trim() })).filter(g => g.text);
   const keptIds = new Set(goals.filter(g => g.id).map(g => g.id));
-  for (const ex of S.DATA.goals) { if (!keptIds.has(ex.id)) await sb.from("goal").delete().eq("id", ex.id); }
-  let sort = 0; for (const g of goals) { if (g.id) await sb.from("goal").update({ text: g.text, sort }).eq("id", g.id); else await sb.from("goal").insert({ person_id: S.DATA.person.id, text: g.text, sort }); sort++; }
+  for (const ex of S.DATA.goals) { if (!keptIds.has(ex.id)) await save(sb.from("goal").delete().eq("id", ex.id)); }
+  let sort = 0; for (const g of goals) { if (g.id) await save(sb.from("goal").update({ text: g.text, sort }).eq("id", g.id)); else await save(sb.from("goal").insert({ person_id: S.DATA.person.id, text: g.text, sort })); sort++; }
   S.sheet = null; await reloadAndRender();
 }
 

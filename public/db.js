@@ -4,6 +4,21 @@ import { todayStr, urlB64, mins } from "./util.js";
 
 export const sb = createClient(SUPA_URL, SUPA_KEY);
 
+function showError(msg) {
+  let el = document.getElementById("dp-toast");
+  if (!el) { el = document.createElement("div"); el.id = "dp-toast"; el.className = "dp-toast"; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.className = "dp-toast show";
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = "dp-toast", 4000);
+}
+
+export async function save(query) {
+  const res = await query;
+  if (res.error) { showError(res.error.message || "Save failed"); return null; }
+  return res.data;
+}
+
 export async function load() {
   const { data: person, error: pe } = await sb.from("person").select("*").eq("slug", S.SLUG).single();
   if (pe || !person) throw new Error("Could not find this plan. Check the link.");
@@ -52,9 +67,9 @@ export async function toggleItem(itemId) {
   const now = !S.CHECKS[itemId];
   S.CHECKS[itemId] = now;
   S.render();
-  await sb.from("item_check").upsert(
+  await save(sb.from("item_check").upsert(
     { person_id: S.DATA.person.id, checklist_item_id: itemId, on_date: todayStr(), checked: now },
-    { onConflict: "person_id,checklist_item_id,on_date" });
+    { onConflict: "person_id,checklist_item_id,on_date" }));
 }
 
 export async function toggleExercise(exId) {
@@ -62,9 +77,9 @@ export async function toggleExercise(exId) {
   const now = !cur.done;
   S.LOGS[exId] = { done: now, feel: cur.feel };
   S.render();
-  await sb.from("exercise_log").upsert(
+  await save(sb.from("exercise_log").upsert(
     { person_id: S.DATA.person.id, exercise_id: exId, on_date: todayStr(), done: now, feel: cur.feel },
-    { onConflict: "person_id,exercise_id,on_date" });
+    { onConflict: "person_id,exercise_id,on_date" }));
 }
 
 export async function setFeel(exId, feelv) {
@@ -72,24 +87,24 @@ export async function setFeel(exId, feelv) {
   const now = cur.feel === feelv ? "" : feelv;
   S.LOGS[exId] = { done: cur.done, feel: now };
   S.render();
-  await sb.from("exercise_log").upsert(
+  await save(sb.from("exercise_log").upsert(
     { person_id: S.DATA.person.id, exercise_id: exId, on_date: todayStr(), done: cur.done, feel: now },
-    { onConflict: "person_id,exercise_id,on_date" });
+    { onConflict: "person_id,exercise_id,on_date" }));
 }
 
 export async function resumeExercise(id) {
-  await sb.from("exercise").update({ paused: false, paused_reason: "" }).eq("id", id);
+  await save(sb.from("exercise").update({ paused: false, paused_reason: "" }).eq("id", id));
   await reloadAndRender();
 }
 
 export async function saveBlockTemplate(id, fields) {
-  await sb.from("block").update(fields).eq("id", id);
+  await save(sb.from("block").update(fields).eq("id", id));
 }
 
 export async function saveBlockToday(id, fields) {
-  await sb.from("block_override").upsert(
+  await save(sb.from("block_override").upsert(
     { person_id: S.DATA.person.id, block_id: id, on_date: todayStr(), patch: fields },
-    { onConflict: "person_id,block_id,on_date" });
+    { onConflict: "person_id,block_id,on_date" }));
 }
 
 export async function reloadAndRender() { await load(); S.render(); }
@@ -112,9 +127,9 @@ export async function enableReminders() {
   let sub = await reg.pushManager.getSubscription();
   if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(VAPID_PUBLIC) });
   const j = sub.toJSON();
-  await sb.from("push_subscription").upsert(
+  await save(sb.from("push_subscription").upsert(
     { person_id: S.DATA.person.id, endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
-    { onConflict: "endpoint" });
+    { onConflict: "endpoint" }));
   try { localStorage.setItem("dp_rem", "1"); } catch(e) {}
   S.render();
   alert("Reminders are on — you'll get a nudge at each block. Keep the app installed on your home screen.");
@@ -124,9 +139,9 @@ export async function markBlockDone(id) {
   const now = !S.BDONE[id];
   if (now) S.BDONE[id] = true; else delete S.BDONE[id];
   S.render();
-  await sb.from("block_done").upsert(
+  await save(sb.from("block_done").upsert(
     { person_id: S.DATA.person.id, block_id: id, on_date: todayStr(), done: now },
-    { onConflict: "person_id,block_id,on_date" });
+    { onConflict: "person_id,block_id,on_date" }));
 }
 
 export async function toggleNotify(id) {
@@ -134,13 +149,13 @@ export async function toggleNotify(id) {
   const now = !blk.notify;
   blk.notify = now;
   S.render();
-  await sb.from("block").update({ notify: now }).eq("id", id);
+  await save(sb.from("block").update({ notify: now }).eq("id", id));
 }
 
 export async function allReminders(on) {
   const ids = [];
   S.DATA.days.forEach(d => d.block.forEach(b => { b.notify = on; ids.push(b.id); }));
-  if (ids.length) await sb.from("block").update({ notify: on }).in("id", ids);
+  if (ids.length) await save(sb.from("block").update({ notify: on }).in("id", ids));
   S.sheet = null;
   await reloadAndRender();
 }
@@ -155,22 +170,23 @@ export function daysForScope(scope) {
 export async function syncItemsToBlock(block, items) {
   const existing = block.checklist_item || [];
   const keptIds = new Set(items.filter(i => i.id).map(i => i.id));
-  for (const ex of existing) { if (!keptIds.has(ex.id)) await sb.from("checklist_item").delete().eq("id", ex.id); }
+  for (const ex of existing) { if (!keptIds.has(ex.id)) await save(sb.from("checklist_item").delete().eq("id", ex.id)); }
   let s = 0;
   for (const it of items) {
-    if (it.id) await sb.from("checklist_item").update({ text: it.text, sort: s }).eq("id", it.id);
-    else await sb.from("checklist_item").insert({ block_id: block.id, text: it.text, sort: s });
+    if (it.id) await save(sb.from("checklist_item").update({ text: it.text, sort: s }).eq("id", it.id));
+    else await save(sb.from("checklist_item").insert({ block_id: block.id, text: it.text, sort: s }));
     s++;
   }
 }
 
 export async function insertBlockOnDay(day, vals) {
-  const { data: nb } = await sb.from("block").insert({
+  const nb = await save(sb.from("block").insert({
     day_id: day.id, sort: 99, time: vals.time, title: vals.title, tag: vals.tag,
     detail: "", workout: vals.workout || null, notify: false
-  }).select().single();
+  }).select().single());
+  if (!nb) return;
   let s = 0;
-  for (const it of vals.items) { await sb.from("checklist_item").insert({ block_id: nb.id, text: it.text, sort: s++ }); }
+  for (const it of vals.items) { await save(sb.from("checklist_item").insert({ block_id: nb.id, text: it.text, sort: s++ })); }
 }
 
 export async function applyScope(block, vals, scope) {
@@ -198,30 +214,30 @@ export async function applyScope(block, vals, scope) {
     if (!existing) {
       await insertBlockOnDay(day, vals);
     } else if (!editing && existing.title !== vals.title) {
-      await sb.from("block").update({ title: existing.title + " + " + vals.title }).eq("id", existing.id);
+      await save(sb.from("block").update({ title: existing.title + " + " + vals.title }).eq("id", existing.id));
       let s = existing.checklist_item.length;
-      for (const it of vals.items) { await sb.from("checklist_item").insert({ block_id: existing.id, text: it.text, sort: s++ }); }
+      for (const it of vals.items) { await save(sb.from("checklist_item").insert({ block_id: existing.id, text: it.text, sort: s++ })); }
     } else {
-      await sb.from("block").update({ time: vals.time, title: vals.title, tag: vals.tag, workout: vals.workout || null }).eq("id", existing.id);
+      await save(sb.from("block").update({ time: vals.time, title: vals.title, tag: vals.tag, workout: vals.workout || null }).eq("id", existing.id));
       await syncItemsToBlock(existing, vals.items);
     }
   }
 }
 
 export async function deleteBlockCascade(id) {
-  await sb.from("block_done").delete().eq("block_id", id);
-  await sb.from("block_override").delete().eq("block_id", id);
-  const { data: items } = await sb.from("checklist_item").select("id").eq("block_id", id);
-  if (items) { for (const it of items) { await sb.from("item_check").delete().eq("checklist_item_id", it.id); } }
-  await sb.from("checklist_item").delete().eq("block_id", id);
-  await sb.from("block").delete().eq("id", id);
+  await save(sb.from("block_done").delete().eq("block_id", id));
+  await save(sb.from("block_override").delete().eq("block_id", id));
+  const items = await save(sb.from("checklist_item").select("id").eq("block_id", id));
+  if (items) { for (const it of items) { await save(sb.from("item_check").delete().eq("checklist_item_id", it.id)); } }
+  await save(sb.from("checklist_item").delete().eq("block_id", id));
+  await save(sb.from("block").delete().eq("id", id));
 }
 
 export async function syncTimezone() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz && S.DATA && S.DATA.person && S.DATA.person.timezone !== tz) {
-      await sb.from("person").update({ timezone: tz }).eq("id", S.DATA.person.id);
+      await save(sb.from("person").update({ timezone: tz }).eq("id", S.DATA.person.id));
       S.DATA.person.timezone = tz;
     }
   } catch(e) {}

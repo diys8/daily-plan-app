@@ -1,7 +1,7 @@
 import { S, DAYNAMES, DAYFULL } from "./state.js";
 import { esc } from "./util.js";
 import {
-  dayFor, workoutByCode, reloadAndRender, sb, deleteBlockCascade
+  dayFor, workoutByCode, reloadAndRender, sb, save, deleteBlockCascade
 } from "./db.js";
 
 function shortName(w) { const n = w.name || ("Routine " + w.code); return n.split("—")[0].split("-")[0].trim() || n; }
@@ -28,7 +28,7 @@ export function renderHub() {
 
 async function newRoutine() {
   const code = "R" + Date.now().toString(36).slice(-4);
-  await sb.from("workout").insert({ person_id: S.DATA.person.id, code, name: "New routine", focus: "strength" });
+  await save(sb.from("workout").insert({ person_id: S.DATA.person.id, code, name: "New routine", focus: "strength" }));
   await reloadAndRender();
   S.routeCode = code; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render();
 }
@@ -78,7 +78,7 @@ export function renderRoutine() {
 
   document.getElementById("rBack").onclick = async () => { await saveRoutineName(); S.exEditId = null; S.exNew = null; S.view = "hub"; await reloadAndRender(); };
   const nm = document.getElementById("r-name"); if (nm) nm.onchange = saveRoutineName;
-  document.querySelectorAll("[data-focus]").forEach(el => el.onclick = async () => { await sb.from("workout").update({ focus: el.dataset.focus }).eq("id", w.id); await reloadAndRender(); });
+  document.querySelectorAll("[data-focus]").forEach(el => el.onclick = async () => { await save(sb.from("workout").update({ focus: el.dataset.focus }).eq("id", w.id)); await reloadAndRender(); });
   document.querySelectorAll("[data-day]").forEach(el => el.onclick = () => toggleRoutineDay(+el.dataset.day));
   document.querySelectorAll("[data-daytime]").forEach(el => el.onchange = () => updateRoutineDayTime(+el.dataset.daytime, el.value));
   document.querySelectorAll("[data-ex]").forEach(el => el.onclick = () => { S.exEditId = +el.dataset.ex; S.exNew = null; S.render(); });
@@ -89,7 +89,7 @@ export function renderRoutine() {
 async function saveRoutineName() {
   const nm = document.getElementById("r-name"); if (!nm) return;
   const v = nm.value.trim(); const w = workoutByCode(S.routeCode);
-  if (w && v && v !== w.name) { await sb.from("workout").update({ name: v }).eq("id", w.id); w.name = v; }
+  if (w && v && v !== w.name) { await save(sb.from("workout").update({ name: v }).eq("id", w.id)); w.name = v; }
 }
 
 async function toggleRoutineDay(wd) {
@@ -98,14 +98,14 @@ async function toggleRoutineDay(wd) {
   if (has) { await deleteBlockCascade(has.id); }
   else {
     const t = (firstWorkoutBlock(w.code)?.time) || "17:00";
-    await sb.from("block").insert({ day_id: day.id, sort: 99, time: t, title: shortName(w), tag: "play", detail: "", workout: w.code, notify: false });
+    await save(sb.from("block").insert({ day_id: day.id, sort: 99, time: t, title: shortName(w), tag: "play", detail: "", workout: w.code, notify: false }));
   }
   await reloadAndRender();
 }
 
 async function updateRoutineDayTime(wd, timeVal) {
   const w = workoutByCode(S.routeCode); const b = dayFor(wd).block.find(x => x.workout === w.code);
-  if (b && timeVal) { await sb.from("block").update({ time: timeVal }).eq("id", b.id); b.time = timeVal; }
+  if (b && timeVal) { await save(sb.from("block").update({ time: timeVal }).eq("id", b.id)); b.time = timeVal; }
 }
 
 function wireExEditor() {
@@ -122,13 +122,13 @@ async function onSaveExercise() {
   const scheme = document.getElementById("ex-scheme").value.trim();
   const cue = document.getElementById("ex-cue").value.trim();
   const section = document.querySelector("#ex-secs .copt.on")?.dataset.exsec || "main";
-  if (S.exEditId === "new") { await sb.from("exercise").insert({ workout_id: w.id, name, scheme, cue, section, sort: w.exercise.length }); }
-  else { await sb.from("exercise").update({ name, scheme, cue, section }).eq("id", S.exEditId); }
+  if (S.exEditId === "new") { await save(sb.from("exercise").insert({ workout_id: w.id, name, scheme, cue, section, sort: w.exercise.length })); }
+  else { await save(sb.from("exercise").update({ name, scheme, cue, section }).eq("id", S.exEditId)); }
   S.exEditId = null; S.exNew = null; await reloadAndRender();
 }
 
 async function onDeleteExercise() {
   if (!confirm("Delete this exercise?")) return;
-  await sb.from("exercise").delete().eq("id", S.exEditId);
+  await save(sb.from("exercise").delete().eq("id", S.exEditId));
   S.exEditId = null; S.exNew = null; await reloadAndRender();
 }

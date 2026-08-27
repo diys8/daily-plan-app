@@ -1,6 +1,6 @@
 import { S, SUPA_URL, SUPA_KEY } from "./state.js";
 import { esc } from "./util.js";
-import { sb, load } from "./db.js";
+import { sb, save, load } from "./db.js";
 
 export function renderCoach() {
   let h = `<div class="screen-top"><button class="backb" id="coachBack">‹</button><div class="hi">Coach</div></div>`;
@@ -84,16 +84,16 @@ async function applyProposal() {
   const ops = sel.map(i => S.coachData.proposal[i]).filter(Boolean);
   for (const op of ops) {
     if (op.type === "update_exercise") {
-      await sb.from("exercise").update(op.fields || {}).eq("id", op.exercise_id);
+      await save(sb.from("exercise").update(op.fields || {}).eq("id", op.exercise_id));
     } else if (op.type === "add_exercise") {
       const w = S.DATA.workouts.find(w => w.code === op.workout_code);
-      if (w) { const sort = w.exercise.length; await sb.from("exercise").insert({ workout_id: w.id, name: op.name, scheme: op.scheme || "", cue: op.cue || "", section: op.section || "main", sort }); }
+      if (w) { const sort = w.exercise.length; await save(sb.from("exercise").insert({ workout_id: w.id, name: op.name, scheme: op.scheme || "", cue: op.cue || "", section: op.section || "main", sort })); }
     } else if (op.type === "remove_exercise") {
-      await sb.from("exercise").delete().eq("id", op.exercise_id);
+      await save(sb.from("exercise").delete().eq("id", op.exercise_id));
     } else if (op.type === "pause_exercise") {
-      await sb.from("exercise").update({ paused: true, paused_reason: op.reason || "" }).eq("id", op.exercise_id);
+      await save(sb.from("exercise").update({ paused: true, paused_reason: op.reason || "" }).eq("id", op.exercise_id));
     } else if (op.type === "resume_exercise") {
-      await sb.from("exercise").update({ paused: false, paused_reason: "" }).eq("id", op.exercise_id);
+      await save(sb.from("exercise").update({ paused: false, paused_reason: "" }).eq("id", op.exercise_id));
     }
   }
   await load();
