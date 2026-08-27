@@ -175,9 +175,37 @@ Backups taken first: `asset` rows `app.js.bak.2026-08-26` and `sw-logic.js.bak.2
 
 **Still open from R0:** F1 proper fix (7 delete policies remain, browser still talks to PostgREST directly), F2 the `save()` wrapper (~20 unchecked writes), F7 backups. Those move to Claude Code.
 
+## Migration A — A1 & A2 done 2026-08-26 (first Claude Code session)
+
+Full detail in `Migration_Plan.md` under **Status**. Summary:
+
+- **A1 done.** Push access to `github.com/diys8/daily-plan-app` confirmed; nothing was needed from Diyanah, the credential was already saved on the machine.
+- **Install fix shipped** — commit `74163bf`, deployed, all eight files confirmed serving. The app installs properly on Android now.
+- **A2 done** — commit `32e6e23`, 21 files, nothing cleaned up. App source, all **9** migrations, three edge functions, and the five documents including the code review.
+- **Verified byte-for-byte:** `app.js`, `sw-logic.js` and all nine migrations match the database exactly (MD5). The three edge functions could **not** be verified this way — Supabase publishes no checksum for function source — so they are reference copies until deployed from the repo.
+
+**Three things A2 turned up:**
+1. **Render was never told about pushes.** Auto-deploy reads as on but had never fired in the service's history; the install fix had to be deployed by hand through the API. A6 would have silently done nothing.
+2. **Five edge functions, not two.** `asset`, `notify`, `coach` are live. `app` and `publish` are dead — see Security below. No secret is hardcoded in any of them.
+3. **`asset.updated_at` doesn't change on write**, so the only "history" the project has today is wrong.
+
+### Security — found 2026-08-26, NOT fixed
+
+**Three front doors reach the live database.** Besides the real app: the edge function `app` serves a complete working copy of Daily Plan frozen at **21 August** with a working key pointed at production, and the public storage bucket `app` serves the same stale copy at a third address. `publish` can rewrite the bucket at any time — authentication off, service-role key.
+
+Nothing in the live app references any of them. All of it is **backed up and verified** in `Health/_archive/dead_supabase_functions_2026-08-26/`. **Deletion was proposed and is not yet approved** — it needs an explicit yes because Supabase cannot undo it.
+
+**The leftovers are not the real exposure.** Read live from the database: `anon` still holds SELECT on 13 tables, INSERT on 12, UPDATE on 11, DELETE on 7. Because `person` is readable by anyone, the key in the page source is enough to list **both private slugs** — so the private-link model protects nothing. That is **F1**, still open, and it is R0 build work rather than a quick patch.
+
+### Landmine — before the next deploy
+
+`docs/`, `src/` and `supabase/` are safe **only because nothing has deployed since the snapshot.** Render publishes the repo root, so the next deploy exposes the migrations, function source and planning documents at the public address. **Reconnecting Render and moving the site files into their own folder must be done together, before anything deploys.**
+
 ## Pending / next up (as of 2026-08-26)
-- **NEXT — Migration A: development moves to Claude Code (decided 2026-08-26).** Steps A1–A7 in `Migration_Plan.md`. Start at **A1 — confirm push access to `github.com/diys8/daily-plan-app`**; everything downstream depends on it. The handoff prompt for the new session is in **`Claude_Code_Handoff.md`**. Nothing else in this list starts until A is done.
-- **YOUR ACTION — push the app shell to GitHub.** Eight files are cut and waiting in **`app_shell_update/`** (`index.html`, `manifest.webmanifest`, `sw.js`, four PNG icons, `icon.svg`); steps are in `app_shell_update/HOW_TO_PUSH.md`. They cannot be pushed for you — the repo needs your credentials. This is what turns the Android home-screen bookmark into a real installed app. After Render redeploys: **delete the old shortcut on the phone first**, then reinstall, and confirm the menu says "Install app" rather than "Add to home screen".
+- **NEXT — approve deleting the two dead edge functions and the four stale bucket objects.** Backed up, verified, waiting on an explicit yes.
+- **THEN — F1**, the real security fix, and the folder move + Render reconnection (together).
+- **THEN — Migration A step A3:** split `app.js` into modules. A4–A7 after.
+- ~~**YOUR ACTION — push the app shell to GitHub.**~~ **Done 2026-08-26** (commit `74163bf`, deployed, phone steps completed).
 - **YOUR ACTION — click-test what shipped 2026-08-26:** rename a routine and reload (should stick — it did not before); tap a reminder (should open that block).
 - **YOUR ACTION — turn down the reminders.** 67 of 71 blocks have reminders on, which is why they feel constant. Bell icon → All reminders off, then switch back on only the ones you want.
 - **Front-end design pass — DONE & APPROVED (2026-08-24).** Design settled over eight rounds with Diyanah on her phone. **The build order is in `Redesign_Build_Order.md` — read that before touching `app.js`.** It carries the engineering rules (simple **and** safe — see the code review section above; deliberate edge-case handling; checks written before the feature), **Stage R0 (foundations/safety, do first)**, the design tokens, the per-stage build spec (R1–R7) with edge cases and pre-written checks, the schema additions, and a named phone test at the end of each stage. Screens: https://claude.ai/code/artifact/becf8c2d-1715-479d-b01d-3b0b12057210 · Critique: https://claude.ai/code/artifact/d93ee0f0-1475-4116-83dd-91368e732af7 · Icon files: `app_icon/`.

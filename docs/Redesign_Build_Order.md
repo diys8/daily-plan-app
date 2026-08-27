@@ -71,10 +71,18 @@ Both are listed per stage below under **Checks to write first**. Copy them into 
 --ink:#f2f4f7     /* primary text */
 --mut:#9ba3ad     /* secondary text, cues, descriptions */
 --dim:#6f7883     /* labels, meta, times */
---acc:#e3953b     /* AMBER — anything tappable */
+--acc:#f2952c     /* AMBER — anything tappable */
 --onacc:#150f05   /* text on amber */
 --done:#a7712e    /* BRONZE — done only. Fill colour, never text */
 ```
+
+> **Amber revised 2026-08-26 — `#e3953b` → `#f2952c`.** Same hue (32°) and the same
+> lightness (56%); saturation raised 75% → 88%. Deliberately *not* brighter — the
+> earlier complaint was glare, the later one was flatness, and those are different
+> dials. This turns the colour up without turning the light up. Contrast on the
+> ground is 8.4:1. The icon gradient moves with it: `#f2952c → #d77c14`.
+> The icon files in `app_icon/` and `app_shell_update/` still carry the old amber
+> and must be re-cut before the next deploy.
 
 **Colour rules — this is the whole system:**
 - **Amber = anything you can act on.** Buttons, selected chips, selected day, active tab, a profile field still to fill. Nothing else.

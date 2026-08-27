@@ -14,7 +14,7 @@ I'm continuing a project that was being run from Claude (Cowork) and is now movi
 
 **Read these before anything else** (in `C:\Users\gongg\OneDrive\Desktop\Health\`):
 
-1. `Migration_Plan.md` — what we're doing. **Start at Migration A, step A1.**
+1. `Migration_Plan.md` — what we're doing. **Read the Status section first** — A1 and A2 are done; it carries what they found and what's next.
 2. `App_Build_Plan.md` — the project index: what exists, what shipped, what's pending.
 3. `Redesign_Build_Order.md` — the approved redesign, staged R0–R7, with edge cases and checks-to-write-first per stage. **Read this before touching app logic.**
 4. `Claude_Code_Handoff.md` — this file.
@@ -42,11 +42,14 @@ Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.
 - One data fix: Thursday had two 09:00 Breakfast blocks both notifying; `block id=38` set `notify=false`.
 - **It was verified statically, not live** — neither machine could reach the running app. Assume it works; confirm on the phone.
 
-**What's still open, roughly in order:**
-1. **Push `app_shell_update/` to the repo.** Eight finished files sit in `Health/app_shell_update/` with `HOW_TO_PUSH.md`. They need my GitHub credentials. This is also the A1 access check. It's what turns the Android home-screen bookmark into a real installed app.
-2. **Finish R0.** F1 proper — 7 `anon` DELETE policies remain and the browser still talks to PostgREST directly with the key in page source. F2 — the `save()` wrapper; about twenty writes never check for errors, so a failed write looks exactly like a successful one. F7 — nothing backs up my plan, routines or logs.
-3. **A known destructive bug, scheduled R5:** un-toggling a day in the routine editor runs `deleteBlockCascade` and deletes the block **and its logs**, silently, with no confirm. I've been avoiding day toggles. Needs a confirm step.
-4. Then R1–R7.
+**What's still open, roughly in order** _(updated 2026-08-26, end of the first Claude Code session)_**:**
+1. ~~**Push `app_shell_update/` to the repo.**~~ **Done** — commit `74163bf`, deployed, phone steps completed. A1 is answered: push access works.
+2. **Approve deleting three leftovers — waiting on me.** The edge functions `app` and `publish`, plus the four objects in the public `app` storage bucket. They serve a working 21-August copy of the app at two other addresses, both pointed at the live database. Nothing references them. Everything is backed up and verified in `Health/_archive/dead_supabase_functions_2026-08-26/`. It needs an explicit yes because Supabase cannot undo it.
+3. **Finish R0.** F1 proper — 7 `anon` DELETE policies remain and the browser still talks to PostgREST directly with the key in page source. **Confirmed worse than it reads:** `person` is readable by anyone holding that key, so both private slugs can simply be listed, and the private-link model protects nothing. F2 — the `save()` wrapper; about twenty writes never check for errors, so a failed write looks exactly like a successful one. F7 — nothing backs up my plan, routines or logs.
+4. **Before any deploy:** reconnect Render to GitHub (pushes currently do **not** deploy — auto-deploy has never once fired) **and** move the site files into their own folder, in the same change. Otherwise the next deploy publishes `docs/`, `src/` and `supabase/` at the app's public address.
+5. **Migration A steps A3–A7.** A3 is splitting `app.js` into modules.
+6. **A known destructive bug, scheduled R5:** un-toggling a day in the routine editor runs `deleteBlockCascade` and deletes the block **and its logs**, silently, with no confirm. I've been avoiding day toggles. Needs a confirm step.
+7. Then R1–R7.
 
 **Reference (phone-readable versions of the same material):**
 - Redesign, 11 screens — https://claude.ai/code/artifact/becf8c2d-1715-479d-b01d-3b0b12057210
@@ -58,4 +61,6 @@ Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.
 
 **How to work with me.** I'm not technical. Summarise what you're going to do in plain language before you do it, and wait for my go-ahead. Don't show me code unless I ask. Keep it short. If something needs my hands — a credential, a push, a tap on the phone — say so as numbered steps.
 
-**Start with A1: confirm push access to `github.com/diys8/daily-plan-app`, then tell me what you found and what A2 will look like.** Don't clean anything up in the first commit — commit exactly what's running today, so we can tell later whether a change broke something.
+~~**Start with A1: confirm push access to `github.com/diys8/daily-plan-app`, then tell me what you found and what A2 will look like.** Don't clean anything up in the first commit — commit exactly what's running today, so we can tell later whether a change broke something.~~
+
+**A1 and A2 are done (2026-08-26).** The snapshot is commit `32e6e23`; the first commit was kept verbatim as asked. Read the **Status** section of `Migration_Plan.md` first — it carries what A2 found, the security position, and the ordered list of what's next. **Start by asking me about item 2 above** (the three leftovers awaiting deletion); don't delete anything without my explicit yes.

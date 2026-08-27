@@ -6,13 +6,71 @@ _Written 2026-08-24. Companion to `App_Build_Plan.md`, `Redesign_Build_Order.md`
 
 ---
 
-## Status — 2026-08-26
+## Status — 2026-08-26 (updated end of first Claude Code session)
 
-**Migration A is go.** Decided 2026-08-26; development moves to Claude Code now, before the redesign is built. Start at **A1**.
+**Migration A is under way. A1 and A2 are done. A3 is next.**
 
-The prompt to paste into the new Claude Code session is in **`Claude_Code_Handoff.md`** (same folder). It carries the repo, the Supabase project, the locked palette, the engineering rules, what shipped on 2026-08-26, and what is still open — so the new session does not rediscover any of it.
+| Step | State |
+|---|---|
+| **A1** — take stock of the repo | **Done.** Push access confirmed. |
+| **A2** — export what exists into files | **Done.** Commit `32e6e23`. |
+| **A3** — split into modules | **Next.** |
+| A4–A7 | Not started. |
 
-One thing carries across as an open action rather than a step: **`app_shell_update/` has not been pushed** to `github.com/diys8/daily-plan-app`. That push is also the A1 access check — if it succeeds, A1 is answered.
+### What was done
+
+**A1 — push access confirmed.** Git is installed and signed in as `diys8` with the credential saved in Windows. Verified by a rehearsal push that GitHub accepted; nothing was written. Nothing was needed from Diyanah.
+
+**The install fix shipped.** `app_shell_update/` was pushed as commit `74163bf` and deployed — the four PNG icons, the maskable icon, the apple-touch icon and the five install meta tags. All eight files confirmed serving live. The phone steps in `app_shell_update/HOW_TO_PUSH.md` were completed.
+
+**A2 — snapshot committed,** `32e6e23`, 21 files, nothing cleaned up:
+- `src/app.js` and `src/sw-logic.js`, out of the `asset` table
+- `supabase/migrations/` — all **9** tracked migrations (the plan said 8; the ninth is the R0 lockdown)
+- `supabase/functions/` — `asset`, `notify`, `coach`
+- `docs/` — the four plans plus the code review, saved from its artifact as a real file
+
+**Verification:** `app.js`, `sw-logic.js` and all nine migrations match the database **byte-for-byte** (MD5 compared against `md5(convert_to(...,'UTF8'))` server-side). The three edge functions are faithful transcriptions but Supabase exposes **no checksum for function source**, so they are unverified reference copies until deployed from the repo. This limitation is recorded in `supabase/functions/README.md`.
+
+### What A2 turned up
+
+**1. Render was never being told about pushes.** Auto-deploy shows as enabled, branch `main`, trigger on commit — but the service had exactly **one deploy in its history**, the manual one from 21 August. The install-fix push produced no deploy; it had to be triggered by hand through the Render API. Most likely the repo was connected by public URL rather than through Render's GitHub app, so no webhook exists. **A6 ("one deploy command") would have silently done nothing.** Not yet repaired.
+
+**2. There are five edge functions, not two.** `asset`, `notify` and `coach` are load-bearing. `app` and `publish` are dead scaffolding from before the move to Render — see the security section below. **No secret is hardcoded in any of the five**; keys come from environment variables or the `app_secret` table.
+
+**3. `updated_at` on the `asset` table does not change on write.** Those timestamps are currently the closest thing the project has to a changelog and they are wrong — `app.js` reads 22 August for content edited on the 26th. A repo replaces them.
+
+### Security — found 2026-08-26, NOT yet fixed
+
+**Three front doors reach the production database, not one:**
+
+| | What | State |
+|---|---|---|
+| 1 | The real app on Render | Current code. Fine. |
+| 2 | Edge function `app` | A complete, working copy of Daily Plan frozen at **21 August**, carrying a working publishable key, pointed at the live database. Answers 200. |
+| 3 | Public storage bucket `app` | The same stale copy at a third address, uploaded 21 August. |
+
+`publish` can rewrite #3 at any time: `verify_jwt` is off and it runs with the **service-role key**, so any anonymous caller can trigger it.
+
+Nothing in the live app references `app`, `publish` or the bucket — checked every reference in `app.js`, `sw-logic.js` and `index.html`.
+
+**Backed up, awaiting approval to delete.** Full content archived to `Health/_archive/dead_supabase_functions_2026-08-26/` (8 files + a README), verified readable. Deletion of the two functions and the four bucket objects was proposed and **explicitly not approved yet** — it needs a clear yes because it cannot be undone from inside Supabase.
+
+**But the leftovers are not the real exposure.** Confirmed live from `pg_policies`: `anon` still holds **SELECT on 13 tables, INSERT on 12, UPDATE on 11, DELETE on 7**. Because `person` is readable with `using (true)`, anyone holding the key — which is published in the page source by design — can list every person row and obtain **both private slugs**. The private-link model is doing no work. This is **F1**, still open, and it is a build task (R0), not a quick patch.
+
+### Landmine — read before the next deploy
+
+`docs/`, `src/` and `supabase/` are safe **only because nothing has deployed since the snapshot landed.** Render publishes the repo root, so the next deploy — by hand, or by a repaired auto-deploy firing on its own — publishes the migrations, the function source and the planning documents at the app's public address. Verified 404 at the time of writing.
+
+**The Render reconnection and the move of the site files into their own folder must happen together, before anything deploys.**
+
+### Next session, in order
+
+1. **Delete the three leftovers** (`app`, `publish`, the bucket objects) — backed up, waiting on an explicit yes.
+2. **F1** — the real security work.
+3. **The folder move + reconnect Render** — together, before any deploy.
+4. **A3** — split `app.js` into modules.
+
+The docs in `docs/` inside the repo are a copy taken at `32e6e23` and are now one revision behind this file. Re-sync them when convenient.
 
 ---
 
@@ -59,16 +117,16 @@ Preserves the instant deploy. Costs a build step — the one piece of tooling th
 
 ### Steps
 
-**A1 — Take stock of the repo.** Confirm push access to `github.com/diys8/daily-plan-app`. Everything downstream depends on this, so check it first.
+**A1 — Take stock of the repo. ✅ DONE 2026-08-26.** Confirm push access to `github.com/diys8/daily-plan-app`. Everything downstream depends on this, so check it first.
 
-**A2 — Export what exists into files.**
+**A2 — Export what exists into files. ✅ DONE 2026-08-26 — commit `32e6e23`.** Nine migrations, not eight. Five edge functions, not two — three committed, two dead and pending deletion.
 - `app.js` (57,606 chars) and `sw-logic.js` from the `asset` table
 - the `coach` and `notify` edge functions
 - the 8 tracked migrations
 - `App_Build_Plan.md`, `Redesign_Build_Order.md`, the code review, and this file, into `/docs`
 Commit that verbatim as the first commit. **Do not clean anything up yet** — the first commit should be exactly what is running, so anything that breaks later is provably our change.
 
-**A3 — Split it into modules.** By screen, following the shape it already has: `today.js`, `workout.js`, `train.js`, `coach.js`, `profile.js`, plus `db.js` (all database calls in one place), `render.js`, `dates.js`, `styles.css`. This is the moment F9 gets fixed — the stylesheet comes out of the logic file and the sections get names.
+**A3 — Split it into modules. ⬅ NEXT.** By screen, following the shape it already has: `today.js`, `workout.js`, `train.js`, `coach.js`, `profile.js`, plus `db.js` (all database calls in one place), `render.js`, `dates.js`, `styles.css`. This is the moment F9 gets fixed — the stylesheet comes out of the logic file and the sections get names.
 
 **A4 — Add the test harness.**
 - **Vitest** for pure logic — the date rules, the recurrence/clash logic in `applyScope`, `esc()`, section grouping. These are the parts most likely to be silently wrong, and they need no browser.
@@ -79,10 +137,13 @@ Commit that verbatim as the first commit. **Do not clean anything up yet** — t
 
 **A6 — One deploy command.** Runs the tests, and only if they pass, ships. Whether that writes to the asset row (Option B) or pushes to the repo (Option A) is settled by the decision above.
 
+> **Blocker found 2026-08-26:** Render is not receiving push notifications from GitHub, so pushing does not deploy. Auto-deploy *reads* as enabled but has never fired — deploys have to be triggered through the Render API by hand. Repair the GitHub→Render connection **before** building anything on top of it, and do it in the same change as moving the site files into their own folder (see the landmine note in Status).
+
 **A7 — A `CLAUDE.md` in the repo root.** The engineering rules, the palette, the do-not-relitigate list, the deploy and rollback procedure. So any future session — hers, mine, or someone else's — starts with the context this one built rather than rediscovering it.
 
 ### What she needs to do
-- Confirm GitHub access (A1).
+- ~~Confirm GitHub access (A1).~~ **Done 2026-08-26 — nothing was needed; the credential was already saved.**
+- **Approve deleting the two dead edge functions and the four stale bucket objects.** Backed up and verified; needs an explicit yes because it cannot be undone.
 - Approve creating a second free Supabase project for staging.
 - Nothing else. The workflow from her side is unchanged: review on the phone, say yes or no.
 
