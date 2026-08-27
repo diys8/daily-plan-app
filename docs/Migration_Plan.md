@@ -53,7 +53,14 @@ _Written 2026-08-24. Companion to `App_Build_Plan.md`, `Redesign_Build_Order.md`
 
 Nothing in the live app references `app`, `publish` or the bucket — checked every reference in `app.js`, `sw-logic.js` and `index.html`.
 
-**Backed up, awaiting approval to delete.** Full content archived to `Health/_archive/dead_supabase_functions_2026-08-26/` (8 files + a README), verified readable. Deletion of the two functions and the four bucket objects was proposed and **explicitly not approved yet** — it needs a clear yes because it cannot be undone from inside Supabase.
+**RETIRED 2026-08-26, approved by Diyanah.** Full content archived first to `Health/_archive/dead_supabase_functions_2026-08-26/` (8 files + a README), verified readable.
+
+- `app` and `publish` — replaced with a 410 stub and `verify_jwt` switched **on**. Both now return 401 to anonymous callers instead of serving the app. They could not be deleted outright: this MCP connection exposes no delete tool for edge functions. **Two clicks remain for Diyanah** in the Supabase dashboard → Edge Functions → delete `app` and `publish`. They are inert until then.
+- The storage bucket `app` — set to **private**. Deleting the objects was refused by Supabase's `storage.protect_delete()` trigger, which requires the Storage API and its key. Private achieves the same closure. The four objects still exist in the bucket; delete them from the dashboard when convenient.
+
+**Verified after the change:** `app` 401, `publish` 401, `asset` 200, `coach` reachable, `notify` reachable, the live site 200. Nothing that works was touched.
+
+**One correction to the original assessment:** the *bucket* copy was never a working app. Supabase serves storage HTML as `text/plain` under `default-src 'none'; sandbox`, so it rendered as text rather than executing. It exposed file contents, not a functioning front door. The **edge function** copy was the real one — it served `text/html` and did run.
 
 **But the leftovers are not the real exposure.** Confirmed live from `pg_policies`: `anon` still holds **SELECT on 13 tables, INSERT on 12, UPDATE on 11, DELETE on 7**. Because `person` is readable with `using (true)`, anyone holding the key — which is published in the page source by design — can list every person row and obtain **both private slugs**. The private-link model is doing no work. This is **F1**, still open, and it is a build task (R0), not a quick patch.
 
@@ -63,12 +70,30 @@ Nothing in the live app references `app`, `publish` or the bucket — checked ev
 
 **The Render reconnection and the move of the site files into their own folder must happen together, before anything deploys.**
 
+### Foundation audit — 2026-08-26
+
+Ran against the repo. **8 pass / 2 partial / 8 missing → 12 pass / 1 partial / 5 missing** after fixing what could be fixed in files (commit `a149285`): `.gitignore`, `README.md`, `.env.example`, `DECISIONS.md`.
+
+**Still missing, and why it's acceptable for now:** CI, a linter, automated tests and a lockfile are migration steps A4 and A5, already scheduled. An incident runbook only starts to matter when people wait on the app.
+
+**The one remaining floor item:** GitHub dependency alerts. That is a repository setting, not a file — and there is no dependency manifest for it to scan yet, since the browser loads `supabase-js` straight from a URL and the edge functions use `jsr:`/`npm:` specifiers. Worth switching on regardless.
+
+**Ranked by consequence, the audit's own conclusion:**
+1. **Nothing backs up the data.** Free plan, no restorable backups, no export anywhere, and **no restore has ever been performed**. This is F7, and it outranks everything because it is the only finding where the loss is permanent.
+2. **F1** — the open database.
+3. **Nothing is watching.** No error monitoring. A failing coach or silent notifications would look perfectly healthy to an uptime check.
+4. No tests, no staging — nothing could currently tell us a change broke something.
+
+**What the audit could not see:** it checks whether things are *configured*, not whether they are *right*. There are no tests, so there is nothing to assess. Supabase's own security advisor returns almost nothing — the wide-open `anon` policies read to it as a deliberate choice, not a fault. **F1 is invisible to automated checking.**
+
 ### Next session, in order
 
-1. **Delete the three leftovers** (`app`, `publish`, the bucket objects) — backed up, waiting on an explicit yes.
-2. **F1** — the real security work.
-3. **The folder move + reconnect Render** — together, before any deploy.
-4. **A3** — split `app.js` into modules.
+1. ~~Delete the three leftovers.~~ **Done 2026-08-26** — retired and verified. Two dashboard clicks remain to delete the stubs properly.
+2. **Backups + a tested restore (F7).** Promoted above F1 by the audit: it is the only permanent loss.
+3. **F1** — the real security work.
+4. **The folder move + reconnect Render** — together, before any deploy.
+5. **Re-cut the icons** to the new amber `#f2952c`; they still carry `#e3953b`. Deploy with the folder move.
+6. **A3** — split `app.js` into modules.
 
 The docs in `docs/` inside the repo are a copy taken at `32e6e23` and are now one revision behind this file. Re-sync them when convenient.
 
