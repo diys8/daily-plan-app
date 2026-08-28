@@ -1,5 +1,5 @@
 import { S, SUPA_URL, SUPA_KEY } from "./state.js";
-import { esc } from "./util.js";
+import { esc, slugify } from "./util.js";
 import { sb, save, load } from "./db.js";
 
 export function renderCoach() {
@@ -86,7 +86,7 @@ async function applyProposal() {
       await save(sb.from("exercise").update(op.fields || {}).eq("id", op.exercise_id));
     } else if (op.type === "add_exercise") {
       const w = S.DATA.workouts.find(w => w.code === op.workout_code);
-      if (w) { const sort = w.exercise.length; await save(sb.from("exercise").insert({ workout_id: w.id, name: op.name, scheme: op.scheme || "", cue: op.cue || "", section: op.section || "main", sort })); }
+      if (w) { const sort = w.exercise.length; await save(sb.from("exercise").insert({ workout_id: w.id, name: op.name, scheme: op.scheme || "", cue: op.cue || "", section: op.section || "main", sort, demo_slug: slugify(op.name) })); }
     } else if (op.type === "remove_exercise") {
       await save(sb.from("exercise").delete().eq("id", op.exercise_id));
     } else if (op.type === "pause_exercise") {

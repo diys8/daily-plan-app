@@ -1,8 +1,9 @@
-import { S, DAYNAMES, DAYFULL } from "./state.js";
-import { esc } from "./util.js";
+import { S, DAYNAMES, DAYFULL, SUPA_URL } from "./state.js";
+import { esc, slugify } from "./util.js";
 import {
   dayFor, workoutByCode, findBlock, reloadAndRender, sb, save, deleteBlockCascade,
-  toggleExercise, setFeel, ensureSession, finishSession, markBlockDone
+  toggleExercise, setFeel, ensureSession, finishSession, markBlockDone,
+  demoMode, demoSrc
 } from "./db.js";
 
 function shortName(w) { const n = w.name || ("Routine " + w.code); return n.split("—")[0].split("-")[0].trim() || n; }
@@ -38,7 +39,7 @@ function exEditor(e) {
     <div class="field"><label>Exercise</label><input class="inp" id="ex-name" value="${esc(e.name || '')}"></div>
     <div class="field"><label>Sets / reps (text)</label><input class="inp" id="ex-scheme" value="${esc(e.scheme || '')}" placeholder="e.g. 3 × 10 / side"></div>
     <div class="field"><label>Section</label><div class="chips" id="ex-secs">${[["warmup", "Warm-up"], ["main", "Main"], ["cooldown", "Cooldown"]].map(([k, l]) => `<div class="copt ${sec === k ? 'on' : ''}" data-exsec="${k}">${l}</div>`).join("")}</div></div>
-    <div class="field"><label>Cue (optional)</label><input class="inp" id="ex-cue" value="${esc(e.cue || '')}" placeholder="a short form reminder"></div>
+    <div class="field"><label>Cue</label><input class="inp" id="ex-cue" value="${esc(e.cue || '')}" placeholder="a short form reminder"></div>
     <div class="edbtns"><button class="btn primary" id="ex-save">Save</button><button class="btn ghost" id="ex-cancel">Cancel</button>${e.__new ? '' : '<button class="btn danger" id="ex-del">Delete</button>'}</div>
   </div>`;
 }
@@ -120,8 +121,9 @@ async function onSaveExercise() {
   if (!name) { alert("Name the exercise."); return; }
   const scheme = document.getElementById("ex-scheme").value.trim();
   const cue = document.getElementById("ex-cue").value.trim();
+  if (!cue) { alert("Add a cue — it shows when there's no illustration."); return; }
   const section = document.querySelector("#ex-secs .copt.on")?.dataset.exsec || "main";
-  if (S.exEditId === "new") { await save(sb.from("exercise").insert({ workout_id: w.id, name, scheme, cue, section, sort: w.exercise.length })); }
+  if (S.exEditId === "new") { await save(sb.from("exercise").insert({ workout_id: w.id, name, scheme, cue, section, sort: w.exercise.length, demo_slug: slugify(name) })); }
   else { await save(sb.from("exercise").update({ name, scheme, cue, section }).eq("id", S.exEditId)); }
   S.exEditId = null; S.exNew = null; await reloadAndRender();
 }
@@ -172,9 +174,20 @@ export function renderWorkout() {
 
       if (S.workoutExOpen === e.id) {
         h += `<div class="wk-card" data-wkex="${e.id}">`;
+        const dm = demoMode(e.demo_slug);
+        if (dm === "animate") {
+          h += `<div class="demo-plate demo-anim">`
+            + `<img class="f0" src="${demoSrc(e.demo_slug, "_0.png")}" alt="" onerror="this.style.display='none'">`
+            + `<img class="f1" src="${demoSrc(e.demo_slug, "_1.png")}" alt="" onerror="this.parentNode.classList.add('no-f1')">`
+            + `</div>`;
+        } else if (dm === "static") {
+          const sfx = S.DEMO_SET.has(e.demo_slug + "_0.png") ? "_0.png" : ".png";
+          h += `<div class="demo-plate"><img src="${demoSrc(e.demo_slug, sfx)}" alt="" onerror="this.style.display='none'"></div>`;
+        }
         h += `<div class="wk-card-name">${esc(e.name)}</div>`;
         if (e.scheme) h += `<div class="wk-card-scheme">${esc(e.scheme)}</div>`;
         if (e.cue) h += `<div class="wk-card-cue">${esc(e.cue)}</div>`;
+        if (dm === "none") h += `<button class="btn ghost demo-req" data-reqdem="1">Request a demo</button>`;
         if (e.breathing) h += `<div class="wk-card-breath"><span>Breathing</span> ${esc(e.breathing)}</div>`;
         if (isToday) {
           h += `<div class="chips" style="margin:10px 0">`
@@ -245,4 +258,5 @@ function wireWorkout(w, isToday) {
   }
 
   document.querySelectorAll("[data-review]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.review; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
+  document.querySelectorAll("[data-reqdem]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); S.view = "profile"; S.render(); });
 }

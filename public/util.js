@@ -34,6 +34,10 @@ export function mins(t) {
   return (+p[0]) * 60 + (+p[1]);
 }
 
+export function slugify(name) {
+  return (name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
+
 export function esc(s) {
   return (s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }

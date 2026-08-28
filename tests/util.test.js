@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmt, mins, esc, tagFromTitle } from "../public/util.js";
+import { fmt, mins, esc, tagFromTitle, slugify } from "../public/util.js";
 
 describe("fmt — 24h to 12h display", () => {
   it("morning", () => expect(fmt("09:30")).toBe("9:30am"));
@@ -44,4 +44,16 @@ describe("tagFromTitle — auto-classify block by title", () => {
     expect(tagFromTitle("")).toBe("work");
   });
   it("case insensitive", () => expect(tagFromTitle("BADMINTON session")).toBe("play"));
+});
+
+describe("slugify — name to storage slug", () => {
+  it("lowercases and underscores", () => expect(slugify("Goblet squat")).toBe("goblet_squat"));
+  it("strips special characters", () => expect(slugify("Single-leg RDL")).toBe("single_leg_rdl"));
+  it("handles em-dashes", () => expect(slugify("Agility ladder — lateral")).toBe("agility_ladder_lateral"));
+  it("trims leading/trailing underscores", () => expect(slugify("—Test—")).toBe("test"));
+  it("handles empty/null", () => {
+    expect(slugify("")).toBe("");
+    expect(slugify(null)).toBe("");
+  });
+  it("collapses multiple separators", () => expect(slugify("Med-ball   throw!!")).toBe("med_ball_throw"));
 });

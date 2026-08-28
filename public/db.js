@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPA_URL, SUPA_KEY, VAPID_PUBLIC, S } from "./state.js";
-import { todayStr, todayWd, urlB64, mins } from "./util.js";
+import { todayStr, todayWd, urlB64, mins, slugify } from "./util.js";
 
 export const sb = createClient(SUPA_URL, SUPA_KEY);
 
@@ -41,7 +41,20 @@ export async function load() {
   S.BDONE = {}; (bdone || []).forEach(o => { if (o.done) S.BDONE[o.block_id] = true; });
   S.LOGS = {}; (exlogs || []).forEach(l => S.LOGS[l.exercise_id] = { done: !!l.done, feel: l.feel || "" });
   S.SESSIONS = {}; (sessions || []).forEach(s => S.SESSIONS[s.workout_id] = s);
+  const { data: demoFiles } = await sb.storage.from("exercise").list("", { limit: 1000 });
+  S.DEMO_SET = new Set((demoFiles || []).map(f => f.name));
   S.DATA = { person, days, workouts, goals };
+}
+
+export function demoMode(slug) {
+  if (!slug) return "none";
+  if (S.DEMO_SET.has(slug + "_0.png") && S.DEMO_SET.has(slug + "_1.png")) return "animate";
+  if (S.DEMO_SET.has(slug + "_0.png") || S.DEMO_SET.has(slug + ".png")) return "static";
+  return "none";
+}
+
+export function demoSrc(slug, suffix) {
+  return SUPA_URL + "/storage/v1/object/public/exercise/" + slug + suffix;
 }
 
 export function dayFor(wd) { return S.DATA.days.find(d => d.weekday === wd); }

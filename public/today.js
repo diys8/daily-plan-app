@@ -4,7 +4,8 @@ import {
   dayFor, workoutByCode, orderedBlocks, currentIdx,
   toggleItem, markBlockDone,
   toggleNotify, enableReminders, allReminders, remOn, anyNotify,
-  applyScope, reloadAndRender, sb, save, deleteBlockCascade
+  applyScope, reloadAndRender, sb, save, deleteBlockCascade,
+  demoMode
 } from "./db.js";
 
 /* ── helpers ──────────────────────────────────────────── */
@@ -224,10 +225,31 @@ async function onSaveProfile() {
   await reloadAndRender();
 }
 
+const DEMO_STYLE = "Flat vector illustration, clean minimalist fitness-guide style. A young woman with a brown ponytail, light mint/teal sports bra and black shorts, white sneakers. Plain white background, full body fully visible, soft flat colors, no gradients, no shadows, no text or labels, anatomically correct proportions and correct exercise form, no extra limbs or distorted joints. Show two figures side by side: the START position (left) and the END position (right), like a printable workout poster.";
+
 export function renderProfile() {
   const p = S.DATA.person;
   const goals = S.DATA.goals;
   let h = `<div class="screen-top"><div class="hi">You</div></div>`;
+
+  const needsDemo = [];
+  const slugsSeen = new Set();
+  S.DATA.workouts.forEach(w => {
+    w.exercise.forEach(e => {
+      const slug = e.demo_slug;
+      if (!slug || slugsSeen.has(slug)) return;
+      slugsSeen.add(slug);
+      if (demoMode(slug) === "none") needsDemo.push(e);
+    });
+  });
+  if (needsDemo.length) {
+    h += `<div class="sec">Needs a demo · ${needsDemo.length}</div>`;
+    needsDemo.forEach(e => {
+      h += `<div class="demo-q-row"><div class="demo-q-name">${esc(e.name)}</div>`
+        + `<div class="demo-q-cue">${esc(e.cue || "No cue yet")}</div>`
+        + `<button class="btn ghost" data-copyprompt="${e.id}">Copy prompt</button></div>`;
+    });
+  }
   h += `<div class="field"><label>Equipment &amp; weights you have</label>
     <textarea class="inp" id="pf-equip" rows="3" placeholder="e.g. dumbbells 5/7.5/10kg, resistance bands, Bosu, yoga mat">${esc(p.equipment)}</textarea></div>`;
   h += `<div class="field"><label>Sports &amp; activities</label>
@@ -257,6 +279,14 @@ function wireProfile() {
   };
   document.querySelectorAll("#pf-goals .xbtn").forEach(x => x.onclick = () => x.closest(".itemed").remove());
   document.getElementById("pf-save").onclick = onSaveProfile;
+  document.querySelectorAll("[data-copyprompt]").forEach(el => el.onclick = () => {
+    const exId = +el.dataset.copyprompt;
+    let ex;
+    for (const w of S.DATA.workouts) { ex = w.exercise.find(e => e.id === exId); if (ex) break; }
+    if (!ex) return;
+    const prompt = DEMO_STYLE + "\n\nExercise: " + ex.name + ".\n" + (ex.cue || "");
+    navigator.clipboard.writeText(prompt).then(() => { el.textContent = "Copied ✓"; setTimeout(() => { el.textContent = "Copy prompt"; }, 1500); });
+  });
 }
 
 /* ── main render ──────────────────────────────────────── */
