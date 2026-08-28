@@ -64,10 +64,17 @@ function nowCardHtml(b, idx, total) {
   if (b.checklist_item.length) h += `<div class="now-checks">${checklistView(b)}</div>`;
   if (b.workout) {
     const wm = workoutMeta(b.workout);
-    if (wm) h += `<div style="margin-top:12px"><button class="btn primary" data-startwk="${b.id}">${wm.done > 0 ? `Continue · ${wm.done}/${wm.total}` : "Start workout"}</button></div>`;
+    if (wm) {
+      let wkLabel;
+      if (isDone) wkLabel = `Recap · ${wm.done}/${wm.total}`;
+      else if (wm.done > 0) wkLabel = `Continue · ${wm.done}/${wm.total}`;
+      else wkLabel = "Start workout";
+      h += `<div style="margin-top:12px"><button class="btn ${isDone ? "ghost" : "primary"}" data-startwk="${b.id}">${wkLabel}</button></div>`;
+    }
   }
-  h += `<div class="now-actions"><button class="btn ${isDone ? "ghost" : "primary"}" data-done="${b.id}">${isDone ? "Done ✓ · undo" : "Mark done"}</button>`
-    + `<button class="btn ghost" data-notify="${b.id}">${BELL} ${b.notify ? "On" : "Remind"}</button>`
+  h += `<div class="now-actions">`;
+  if (!b.workout) h += `<button class="btn ${isDone ? "ghost" : "primary"}" data-done="${b.id}">${isDone ? "Done ✓ · undo" : "Mark done"}</button>`;
+  h += `<button class="btn ghost" data-notify="${b.id}">${BELL} ${b.notify ? "On" : "Remind"}</button>`
     + `<button class="btn ghost" data-editblock="${b.id}">${PENCIL}</button></div></div>`;
   return h;
 }

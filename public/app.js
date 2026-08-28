@@ -1,7 +1,7 @@
 import { S } from "./state.js";
 import { load, syncTimezone } from "./db.js";
 import { renderPlan, renderProfile } from "./today.js";
-import { renderHub, renderRoutine, renderWorkout } from "./workout.js";
+import { renderHub, renderRoutine, renderWorkout, renderRecap } from "./workout.js";
 import { renderCoach } from "./coach.js";
 
 const params = new URLSearchParams(location.search);
@@ -19,6 +19,7 @@ function render() {
   else if (S.view === "hub") renderHub();
   else if (S.view === "routine") renderRoutine();
   else if (S.view === "workout") renderWorkout();
+  else if (S.view === "recap") renderRecap();
   else if (S.view === "profile") renderProfile();
   else renderPlan();
   updateTabs();
@@ -29,7 +30,7 @@ S.render = render;
 function updateTabs() {
   document.querySelectorAll(".tab").forEach(t => {
     const tab = t.dataset.tab;
-    const active = (tab === "plan" && (S.view === "plan" || S.view === "workout")) ||
+    const active = (tab === "plan" && (S.view === "plan" || S.view === "workout" || S.view === "recap")) ||
                    (tab === "hub" && (S.view === "hub" || S.view === "routine")) ||
                    (tab === "coach" && S.view === "coach") ||
                    (tab === "profile" && S.view === "profile");

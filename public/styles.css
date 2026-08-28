@@ -224,6 +224,30 @@ input,textarea,select{font-family:inherit}
 .demo-anim.no-f1 .f1{display:none}
 .demo-req{margin-bottom:10px;font-size:13px}
 
+/* recap */
+.recap{padding:8px 0}
+.recap-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.recap-name{font-size:22px;font-weight:700}
+.recap-badge{font-size:12px;font-weight:700;color:var(--done);border:1px solid var(--done);
+  border-radius:8px;padding:3px 10px}
+.recap-meta{font-size:13px;color:var(--dim);margin-bottom:20px}
+.recap-stats{display:flex;gap:2px;margin-bottom:20px}
+.recap-stat{flex:1;background:var(--surf);border:1px solid var(--line);border-radius:12px;
+  padding:14px 10px;text-align:center}
+.recap-val{font-size:18px;font-weight:700;display:block}
+.recap-lbl{font-size:11px;color:var(--dim);display:block;margin-top:2px}
+.recap-sec{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim);margin:16px 0 6px;display:flex;justify-content:space-between}
+.recap-ex{display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:14px}
+.recap-dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--line);flex-shrink:0}
+.recap-dot.done{background:var(--done);border-color:var(--done)}
+.recap-skip{margin-left:auto;font-size:12px;color:var(--dim);font-style:italic}
+.recap-skipped{font-size:13px;color:var(--dim);margin:14px 2px 0;line-height:1.5}
+.recap-note{font-size:14px;color:var(--dim);text-align:center;padding:16px 0}
+.recap-feel{font-size:15px;font-weight:600;text-align:center;margin:24px 0 10px}
+.recap-feels{justify-content:center;margin-bottom:20px}
+.recap-foot{text-align:center;font-size:12px;color:var(--dim);margin-bottom:14px}
+
 /* needs demo queue */
 .demo-q-row{background:var(--surf);border:1px solid var(--line);border-radius:10px;
   padding:11px 12px;margin-bottom:7px}

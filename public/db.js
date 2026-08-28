@@ -262,10 +262,19 @@ export async function ensureSession(workoutId) {
 }
 
 export async function finishSession(workoutId) {
-  await save(sb.from("workout_session").upsert(
+  const sess = await save(sb.from("workout_session").upsert(
     { person_id: S.DATA.person.id, workout_id: workoutId, on_date: S.todayDate, finished_at: new Date().toISOString() },
     { onConflict: "person_id,workout_id,on_date" }
-  ));
+  ).select().single());
+  if (sess) S.SESSIONS[workoutId] = sess;
+}
+
+export async function setSessionFeel(workoutId, feel) {
+  const sess = S.SESSIONS[workoutId];
+  if (!sess) return;
+  sess.feel = feel;
+  S.render();
+  await save(sb.from("workout_session").update({ feel }).eq("id", sess.id));
 }
 
 export async function syncTimezone() {

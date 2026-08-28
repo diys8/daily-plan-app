@@ -1,8 +1,8 @@
 import { S, DAYNAMES, DAYFULL, SUPA_URL } from "./state.js";
-import { esc, slugify } from "./util.js";
+import { esc, fmt, slugify } from "./util.js";
 import {
   dayFor, workoutByCode, findBlock, reloadAndRender, sb, save, deleteBlockCascade,
-  toggleExercise, setFeel, ensureSession, finishSession, markBlockDone,
+  toggleExercise, setFeel, ensureSession, finishSession, markBlockDone, setSessionFeel,
   demoMode, demoSrc
 } from "./db.js";
 
@@ -142,6 +142,9 @@ export function renderWorkout() {
   const w = workoutByCode(block.workout);
   if (!w) { S.view = "plan"; S.render(); return; }
 
+  const sess = S.SESSIONS[w.id];
+  if (sess && sess.finished_at) { S.view = "recap"; S.render(); return; }
+
   const isToday = S.viewWd === S.todayWd;
   const active = w.exercise.filter(e => !e.paused);
   const paused = w.exercise.filter(e => e.paused);
@@ -246,17 +249,115 @@ function wireWorkout(w, isToday) {
       ev.stopPropagation();
       await ensureSession(w.id);
       await toggleExercise(+el.dataset.exdone);
+      const allActive = w.exercise.filter(e => !e.paused);
+      if (allActive.length > 0 && allActive.every(e => S.LOGS[e.id]?.done)) {
+        await finishSession(w.id);
+        S.view = "recap"; S.workoutExOpen = null;
+        if (S.workoutBlockId && !S.BDONE[S.workoutBlockId]) await markBlockDone(S.workoutBlockId);
+        else S.render();
+      }
     });
 
     const fin = document.getElementById("wkFinish");
     if (fin) fin.onclick = async () => {
       await ensureSession(w.id);
       await finishSession(w.id);
+      S.view = "recap"; S.workoutExOpen = null;
       if (S.workoutBlockId && !S.BDONE[S.workoutBlockId]) await markBlockDone(S.workoutBlockId);
-      S.view = "plan"; S.workoutBlockId = null; S.workoutExOpen = null; S.render();
+      else S.render();
     };
   }
 
   document.querySelectorAll("[data-review]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.review; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
   document.querySelectorAll("[data-reqdem]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); S.view = "profile"; S.render(); });
+}
+
+/* ── recap view ─────────────────────────────────────────── */
+
+function fmtClock(d) {
+  return fmt(String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"));
+}
+
+export function renderRecap() {
+  const block = findBlock(S.workoutBlockId);
+  if (!block || !block.workout) { S.view = "plan"; S.render(); return; }
+  const w = workoutByCode(block.workout);
+  if (!w) { S.view = "plan"; S.render(); return; }
+  const sess = S.SESSIONS[w.id];
+  if (!sess || !sess.finished_at) { S.view = "workout"; S.render(); return; }
+
+  const active = w.exercise.filter(e => !e.paused);
+  const paused = w.exercise.filter(e => e.paused);
+  const doneCount = active.filter(e => S.LOGS[e.id]?.done).length;
+  const total = active.length;
+  const skipped = active.filter(e => !S.LOGS[e.id]?.done);
+
+  let minStr = "—";
+  let timeRange = "";
+  if (sess.started_at && sess.finished_at) {
+    const ms = new Date(sess.finished_at).getTime() - new Date(sess.started_at).getTime();
+    if (ms > 0 && !isNaN(ms)) minStr = Math.round(ms / 60000) + " min";
+    timeRange = fmtClock(new Date(sess.started_at)) + " → " + fmtClock(new Date(sess.finished_at));
+  }
+
+  const dp = (sess.on_date || S.todayDate).split("-");
+  const dateStr = new Date(+dp[0], +dp[1] - 1, +dp[2])
+    .toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+
+  let h = `<div class="recap">`;
+  h += `<div class="recap-head"><div class="recap-name">${esc(w.name || "Workout")}</div><div class="recap-badge">Done ✓</div></div>`;
+  h += `<div class="recap-meta">${dateStr}`;
+  if (timeRange) h += ` · ${timeRange}`;
+  h += `</div>`;
+
+  h += `<div class="recap-stats">`;
+  h += `<div class="recap-stat"><span class="recap-val">${minStr}</span></div>`;
+  h += `<div class="recap-stat"><span class="recap-val">${doneCount}/${total}</span><span class="recap-lbl">moves</span></div>`;
+  h += `<div class="recap-stat"><span class="recap-val">${paused.length}</span><span class="recap-lbl">paused</span></div>`;
+  h += `</div>`;
+
+  const secLabel = { warmup: "Warm-up", main: "Main", cooldown: "Cooldown" };
+  ["warmup", "main", "cooldown"].forEach(secKey => {
+    const secActive = active.filter(e => (e.section || "main") === secKey);
+    if (secActive.length === 0) return;
+    const secDone = secActive.filter(e => S.LOGS[e.id]?.done).length;
+    h += `<div class="recap-sec">${secLabel[secKey]} <span>${secDone}/${secActive.length}</span></div>`;
+    secActive.forEach(e => {
+      const d = S.LOGS[e.id]?.done;
+      h += `<div class="recap-ex"><span class="recap-dot ${d ? "done" : ""}"></span><span>${esc(e.name)}</span>`;
+      if (!d) h += `<span class="recap-skip">skipped</span>`;
+      h += `</div>`;
+    });
+  });
+
+  if (skipped.length > 0) {
+    h += `<div class="recap-skipped">Skipped: ${skipped.map(e => esc(e.name)).join(", ")}</div>`;
+  }
+
+  if (doneCount === 0 && total > 0) {
+    h += `<div class="recap-note">Nothing logged this session.</div>`;
+  }
+
+  h += `<div class="recap-feel">How did the session go?</div>`;
+  h += `<div class="chips recap-feels">`;
+  ["easy", "solid", "rough"].forEach(f => {
+    h += `<div class="copt ${sess.feel === f ? "on" : ""}" data-sfeel="${f}">${f[0].toUpperCase() + f.slice(1)}</div>`;
+  });
+  h += `</div>`;
+
+  h += `<div class="recap-foot">Saved as you went.</div>`;
+  h += `<button class="btn primary" id="recapBack" style="width:100%">Back to today</button>`;
+  h += `</div>`;
+
+  document.getElementById("wrap").innerHTML = h;
+  wireRecap(w);
+}
+
+function wireRecap(w) {
+  document.getElementById("recapBack").onclick = () => {
+    S.view = "plan"; S.workoutBlockId = null; S.workoutExOpen = null; S.render();
+  };
+  document.querySelectorAll("[data-sfeel]").forEach(el => el.onclick = () => {
+    setSessionFeel(w.id, el.dataset.sfeel);
+  });
 }
