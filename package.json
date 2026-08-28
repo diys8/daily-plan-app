@@ -1,0 +1,27 @@
+{
+  "name": "daily-plan-app-f2",
+  "version": "1.0.0",
+  "description": "A phone-first dark-theme web app that runs Diyanah's day — meals, work blocks, wind-down, training — plus a workouts hub and an AI coach.",
+  "main": "sw.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diys8/daily-plan-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/diys8/daily-plan-app/issues"
+  },
+  "homepage": "https://github.com/diys8/daily-plan-app#readme",
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}
