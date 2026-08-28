@@ -3,7 +3,7 @@ import { esc } from "./util.js";
 import { sb, save, load } from "./db.js";
 
 export function renderCoach() {
-  let h = `<div class="screen-top"><button class="backb" id="coachBack">‹</button><div class="hi">Coach</div></div>`;
+  let h = `<div class="screen-top"><div class="hi">Coach</div></div>`;
   h += `<div class="hint" style="margin:0 2px 12px">Ask for advice, or get a weekly progression review. Nothing changes until you approve.</div>`;
   h += `<textarea class="inp" id="coach-input" rows="3" placeholder="e.g. My left side feels weaker — how should I adjust?">${esc(S.coachDraft)}</textarea>`;
   h += `<div class="edbtns"><button class="btn primary" id="coach-ask">Ask the coach</button><button class="btn" id="coach-review">Review my week</button></div>`;
@@ -17,7 +17,7 @@ export function renderCoach() {
       h += `<div class="coachbox">${esc(S.coachData.message || "")}</div>`;
     } else {
       if (S.coachData.lite_mode) { h += `<div class="badge">⚡ Lite mode (Haiku)</div>`; }
-      else { h += `<div class="badge" style="color:var(--accent);border-color:rgba(106,168,245,.4)">Sonnet</div>`; }
+      else { h += `<div class="badge" style="color:var(--acc);border-color:rgba(242,149,44,.4)">Sonnet</div>`; }
       h += `<div class="coachbox">${esc(S.coachData.text || "")}</div>`;
       const b = S.coachData.budget || {};
       h += `<div class="hint" style="margin-top:10px">This month: $${(+(b.month_spent || 0)).toFixed(2)} of $${(+(b.month_allowance || 0)).toFixed(2)}</div>`;
@@ -55,7 +55,6 @@ export function renderCoach() {
 
   document.getElementById("wrap").innerHTML = h;
 
-  document.getElementById("coachBack").onclick = () => { S.view = "hub"; S.render(); };
   const ta = document.getElementById("coach-input"); if (ta) ta.oninput = () => { S.coachDraft = ta.value; };
   const ask = document.getElementById("coach-ask"); if (ask) ask.onclick = () => callCoach("ask");
   const rev = document.getElementById("coach-review"); if (rev) rev.onclick = () => callCoach("review");

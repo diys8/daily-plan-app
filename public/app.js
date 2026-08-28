@@ -1,6 +1,6 @@
 import { S } from "./state.js";
 import { load, syncTimezone } from "./db.js";
-import { renderPlan } from "./today.js";
+import { renderPlan, renderProfile } from "./today.js";
 import { renderHub, renderRoutine } from "./workout.js";
 import { renderCoach } from "./coach.js";
 
@@ -12,12 +12,35 @@ if (!slug) slug = "diyanah-7fx3k9";
 S.SLUG = slug;
 
 function render() {
-  if (S.view === "coach") { renderCoach(); return; }
-  if (S.view === "hub") { renderHub(); return; }
-  if (S.view === "routine") { renderRoutine(); return; }
-  renderPlan();
+  if (S.view === "coach") { renderCoach(); updateTabs(); return; }
+  if (S.view === "hub") { renderHub(); updateTabs(); return; }
+  if (S.view === "routine") { renderRoutine(); updateTabs(); return; }
+  if (S.view === "profile") { renderProfile(); updateTabs(); return; }
+  renderPlan(); updateTabs();
 }
 S.render = render;
+
+function updateTabs() {
+  document.querySelectorAll(".tab").forEach(t => {
+    const tab = t.dataset.tab;
+    const active = (tab === "plan" && S.view === "plan") ||
+                   (tab === "hub" && (S.view === "hub" || S.view === "routine")) ||
+                   (tab === "coach" && S.view === "coach") ||
+                   (tab === "profile" && S.view === "profile");
+    t.classList.toggle("active", active);
+  });
+}
+
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => {
+    const tab = t.dataset.tab;
+    if (tab === "plan") S.view = "plan";
+    else if (tab === "hub") S.view = "hub";
+    else if (tab === "coach") { S.view = "coach"; S.coachData = null; S.coachBusy = false; S.coachApplied = false; }
+    else if (tab === "profile") S.view = "profile";
+    S.render();
+  };
+});
 
 function openFromLink() {
   const bid = +(params.get("b") || 0);

@@ -9,7 +9,7 @@ function daysForRoutine(code) { return S.DATA.days.filter(d => d.block.some(b =>
 function firstWorkoutBlock(code) { for (const d of S.DATA.days) { const b = d.block.find(x => x.workout === code); if (b) return b; } return null; }
 
 export function renderHub() {
-  let h = `<div class="screen-top"><button class="backb" id="hubBack">‹</button><div class="hi">Workouts</div><button class="coachlink" id="coachBtn">✨ Ask the coach</button></div>`;
+  let h = `<div class="screen-top"><div class="hi">Train</div></div>`;
   S.DATA.workouts.forEach(w => {
     const wds = daysForRoutine(w.code);
     const days = wds.length ? wds.map(d => DAYNAMES[d]).join(", ") : "Not scheduled";
@@ -20,8 +20,6 @@ export function renderHub() {
   h += `<button class="dash" id="newRoutine">+ New routine</button>`;
   h += `<div class="foot">Pick the days a routine runs — its workout block lands on your schedule automatically.</div>`;
   document.getElementById("wrap").innerHTML = h;
-  document.getElementById("hubBack").onclick = () => { S.view = "plan"; S.render(); };
-  document.getElementById("coachBtn").onclick = () => { S.view = "coach"; S.coachData = null; S.coachBusy = false; S.coachApplied = false; S.render(); };
   document.getElementById("newRoutine").onclick = newRoutine;
   document.querySelectorAll("[data-routine]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.routine; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
 }

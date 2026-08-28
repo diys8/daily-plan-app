@@ -29,5 +29,6 @@ export const S = {
   coachApplied: false,
   coachDraft: "",
   SLUG: null,
+  showPast: false,
   render: () => {},
 };
