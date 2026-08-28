@@ -223,7 +223,8 @@ async function onSaveProfile() {
   const equip = document.getElementById("pf-equip").value.trim();
   const con = document.getElementById("pf-con").value.trim();
   const sports = document.getElementById("pf-sports").value.trim();
-  const level = document.getElementById("pf-level").value.trim();
+  const lvlChip = document.querySelector("[data-lvl].on");
+  const level = lvlChip ? lvlChip.dataset.lvl : "";
   await save(sb.from("person").update({ equipment: equip, constraints: con, sports, level }).eq("id", S.DATA.person.id));
   const goals = [...document.querySelectorAll("#pf-goals .goaltxt")].map(i => ({ id: i.dataset.id ? +i.dataset.id : null, text: i.value.trim() })).filter(g => g.text);
   const keptIds = new Set(goals.filter(g => g.id).map(g => g.id));
@@ -237,7 +238,37 @@ const DEMO_STYLE = "Flat vector illustration, clean minimalist fitness-guide sty
 export function renderProfile() {
   const p = S.DATA.person;
   const goals = S.DATA.goals;
+  const lvl = p.level || "";
   let h = `<div class="screen-top"><div class="hi">You</div></div>`;
+
+  h += `<div class="sec">Training</div>`;
+  h += `<div class="field"><label>Training level</label>`;
+  h += `<div class="chips" id="pf-lvl-chips">`;
+  ["beginner", "intermediate", "advanced"].forEach(v => {
+    h += `<div class="copt ${lvl === v ? 'on' : ''}" data-lvl="${v}">${v[0].toUpperCase() + v.slice(1)}</div>`;
+  });
+  h += `</div>`;
+  if (!lvl) h += `<div class="hint" style="color:var(--acc)">Not set — tap to pick</div>`;
+  h += `</div>`;
+
+  h += `<div class="field"><label>Equipment &amp; weights</label>
+    <textarea class="inp" id="pf-equip" rows="2" placeholder="e.g. dumbbells 5/7.5/10kg, resistance bands, Bosu">${esc(p.equipment)}</textarea></div>`;
+  h += `<div class="field"><label>Sports &amp; activities</label>
+    <textarea class="inp" id="pf-sports" rows="2" placeholder="e.g. badminton, tennis, running">${esc(p.sports)}</textarea></div>`;
+  h += `<div class="field"><label>Injuries / things to work around</label>
+    <textarea class="inp" id="pf-con" rows="2" placeholder="e.g. gastritis, sensitive left knee">${esc(p.constraints)}</textarea></div>`;
+
+  h += `<div class="sec">Goals</div>`;
+  const goalsHtml = goals.map(g =>
+    `<div class="itemed"><input class="inp goaltxt" data-id="${g.id}" value="${esc(g.text)}"><button class="xbtn" data-rmgoal="${g.id}">✕</button></div>`).join("");
+  if (goals.length === 0) h += `<div class="hint">No goals yet — add one so the coach knows what to aim for.</div>`;
+  h += `<div id="pf-goals">${goalsHtml}</div>`;
+  h += `<button class="linkbtn" id="pf-addgoal">+ Add goal</button>`;
+
+  h += `<div class="sec">App</div>`;
+  h += `<div class="pf-row" id="remRow"><span>Reminders</span><span class="pf-val">${(remOn() && anyNotify()) ? "On" : "Off"}</span><span class="rchev">›</span></div>`;
+  const tz = p.timezone || "Not detected";
+  h += `<div class="pf-row"><span>Timezone</span><span class="pf-val">${esc(tz)}</span></div>`;
 
   const needsDemo = [];
   const slugsSeen = new Set();
@@ -257,20 +288,7 @@ export function renderProfile() {
         + `<button class="btn ghost" data-copyprompt="${e.id}">Copy prompt</button></div>`;
     });
   }
-  h += `<div class="field"><label>Equipment &amp; weights you have</label>
-    <textarea class="inp" id="pf-equip" rows="3" placeholder="e.g. dumbbells 5/7.5/10kg, resistance bands, Bosu, yoga mat">${esc(p.equipment)}</textarea></div>`;
-  h += `<div class="field"><label>Sports &amp; activities</label>
-    <textarea class="inp" id="pf-sports" rows="2" placeholder="e.g. badminton; also tennis, running">${esc(p.sports)}</textarea></div>`;
-  h += `<div class="field"><label>Training level / experience</label>
-    <textarea class="inp" id="pf-level" rows="2" placeholder="e.g. train ~2x/week, comfy with bodyweight, newer to weights">${esc(p.level)}</textarea></div>`;
-  h += `<div class="field"><label>Injuries / things to work around</label>
-    <textarea class="inp" id="pf-con" rows="2" placeholder="e.g. gastritis, sensitive left knee">${esc(p.constraints)}</textarea></div>`;
-  const goalsHtml = goals.map(g =>
-    `<div class="itemed"><input class="inp goaltxt" data-id="${g.id}" value="${esc(g.text)}"><button class="xbtn" data-rmgoal="${g.id}">✕</button></div>`).join("");
-  h += `<div class="field"><label>Fitness goals</label>
-    <div class="hint">Write these however you like — e.g. "even out my weaker left side, especially shoulders &amp; legs."</div>
-    <div id="pf-goals">${goalsHtml}</div>
-    <button class="linkbtn" id="pf-addgoal">+ Add goal</button></div>`;
+
   h += `<div class="edbtns"><button class="btn primary" id="pf-save">Save</button></div>`;
   h += `<div class="foot">Your profile helps the coach give better advice.</div>`;
   document.getElementById("wrap").innerHTML = h;
@@ -278,6 +296,10 @@ export function renderProfile() {
 }
 
 function wireProfile() {
+  document.querySelectorAll("[data-lvl]").forEach(el => el.onclick = () => {
+    document.querySelectorAll("[data-lvl]").forEach(c => c.classList.remove("on"));
+    el.classList.add("on");
+  });
   document.getElementById("pf-addgoal").onclick = () => {
     const box = document.getElementById("pf-goals");
     const d = document.createElement("div"); d.className = "itemed";
@@ -286,6 +308,10 @@ function wireProfile() {
   };
   document.querySelectorAll("#pf-goals .xbtn").forEach(x => x.onclick = () => x.closest(".itemed").remove());
   document.getElementById("pf-save").onclick = onSaveProfile;
+  document.getElementById("remRow").onclick = async () => {
+    if (remOn() && anyNotify()) { try { localStorage.setItem("dp_rem", "0"); } catch(e) {} S.render(); }
+    else { await enableReminders(); }
+  };
   document.querySelectorAll("[data-copyprompt]").forEach(el => el.onclick = () => {
     const exId = +el.dataset.copyprompt;
     let ex;

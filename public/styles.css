@@ -263,6 +263,10 @@ input,textarea,select{font-family:inherit}
 .demo-q-name{font-size:14px;font-weight:600}
 .demo-q-cue{font-size:13px;color:var(--mut);margin:4px 0 8px;line-height:1.4}
 
+/* profile (R7) */
+.pf-row{display:flex;align-items:center;gap:10px;padding:14px 2px;border-bottom:1px solid var(--line2);cursor:pointer;font-size:14px}
+.pf-val{margin-left:auto;color:var(--dim);font-size:13px}
+
 /* coach thread (R6) */
 .coach-empty{color:var(--mut);font-size:14px;line-height:1.6;margin:0 2px 16px}
 .coach-quicks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
