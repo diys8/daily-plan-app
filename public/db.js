@@ -47,6 +47,10 @@ export async function load() {
     .order("on_date", { ascending: false }).limit(50);
   S.RECENT_SESSIONS = {};
   (recent || []).forEach(s => { if (!S.RECENT_SESSIONS[s.workout_id]) S.RECENT_SESSIONS[s.workout_id] = s; });
+  const { data: msgs } = await sb.from("coach_message")
+    .select("id, role, body, proposal, created_at")
+    .eq("person_id", person.id).order("created_at", { ascending: true }).limit(200);
+  S.coachMessages = msgs || [];
   const { data: demoFiles } = await sb.storage.from("exercise").list("", { limit: 1000 });
   S.DEMO_SET = new Set((demoFiles || []).map(f => f.name));
   S.DATA = { person, days, workouts, goals };

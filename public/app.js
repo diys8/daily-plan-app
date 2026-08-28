@@ -43,7 +43,7 @@ document.querySelectorAll(".tab").forEach(t => {
     const tab = t.dataset.tab;
     if (tab === "plan") S.view = "plan";
     else if (tab === "hub") S.view = "hub";
-    else if (tab === "coach") { S.view = "coach"; S.coachData = null; S.coachBusy = false; S.coachApplied = false; }
+    else if (tab === "coach") { S.view = "coach"; S.coachBusy = false; S.coachApplied = false; }
     else if (tab === "profile") S.view = "profile";
     S.render();
   };

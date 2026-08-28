@@ -18,15 +18,10 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch (_) {}
   const slug = body.slug;
-  const mode = body.mode || "ask";
   const message = (body.message || "").toString().slice(0, 2000);
+  const history: { role: string; body: string }[] = Array.isArray(body.history) ? body.history.slice(-20) : [];
 
   if (!KEY) return j({ ok: false, error: "coach not configured (missing key)" }, 500);
-
-  if (mode === "models") {
-    const r = await fetch("https://api.anthropic.com/v1/models", { headers: { "x-api-key": KEY, "anthropic-version": "2023-06-01" } });
-    return j(await r.json(), r.status);
-  }
 
   if (!slug) return j({ ok: false, error: "missing slug" }, 400);
   const { data: person } = await admin.from("person").select("*").eq("slug", slug).single();
@@ -54,7 +49,7 @@ Deno.serve(async (req) => {
   });
 
   if (yearSpent >= yearCap) {
-    return j({ ok: true, paused: true, message: "You've reached your $" + yearCap + "/yr AI budget. Increase your allocation to keep using the coach.", budget: { month_spent: monthSpent, month_allowance: monthAllow, year_spent: yearSpent, year_cap: yearCap } });
+    return j({ ok: true, paused: true, message: "You've hit your yearly coach budget. Ask Gong to raise it if you'd like to keep going." });
   }
 
   const lite = monthSpent >= 0.8 * monthAllow;
@@ -64,43 +59,65 @@ Deno.serve(async (req) => {
   const { data: workouts } = await admin.from("workout").select("*, exercise(*)").eq("person_id", person.id);
   const since = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
   const { data: logs } = await admin.from("exercise_log").select("exercise_id,on_date,done,feel").eq("person_id", person.id).gte("on_date", since);
+  const { data: sessions } = await admin.from("workout_session").select("workout_id,on_date,feel,started_at,finished_at").eq("person_id", person.id).gte("on_date", since);
+  const { data: days } = await admin.from("day").select("weekday, block(time, title, workout, tag)").eq("person_id", person.id).order("weekday");
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const schedule = (days || []).map((d: any) => ({
+    day: dayNames[d.weekday],
+    blocks: (d.block || []).map((b: any) => ({ time: b.time, title: b.title, workout: b.workout, tag: b.tag }))
+  }));
 
   const context = {
     profile: { level: person.level, equipment: person.equipment, injuries: person.constraints, sports: person.sports },
     goals: (goals || []).map((g: any) => g.text),
-    routines: (workouts || []).map((w: any) => ({ code: w.code, name: w.name, focus: w.focus, exercises: (w.exercise || []).map((e: any) => ({ id: e.id, name: e.name, section: e.section, scheme: e.scheme, load: e.load, is_footwork: e.is_footwork, paused: !!e.paused, paused_reason: e.paused_reason || "" })) })),
+    routines: (workouts || []).map((w: any) => ({
+      code: w.code, name: w.name, focus: w.focus,
+      exercises: (w.exercise || []).map((e: any) => ({
+        id: e.id, name: e.name, section: e.section, scheme: e.scheme, load: e.load,
+        is_footwork: e.is_footwork, paused: !!e.paused, paused_reason: e.paused_reason || ""
+      }))
+    })),
     recent_logs: logs || [],
+    recent_sessions: (sessions || []).map((s: any) => ({
+      workout_id: s.workout_id, on_date: s.on_date, feel: s.feel,
+      duration_min: s.started_at && s.finished_at ? Math.round((new Date(s.finished_at).getTime() - new Date(s.started_at).getTime()) / 60000) : null
+    })),
+    schedule,
   };
 
   const sys = [
     "You are a certified sports dietitian and CSCS strength coach helping one client via a fitness app.",
     "Principles: human-centered and conservative. Prefer rep-ranges and 'reps in reserve' over fixed maxes. Start light, progress gradually, respect the client's injuries, equipment, level, and goals. Never prescribe machine-like fixed volume cold. Build in deloads.",
-    "You are given the client's profile, goals, routines (with exercise ids; each exercise has a 'paused' flag and 'paused_reason'), and recent per-exercise logs (done + how it felt: easy/right/hard/'').",
+    "You are given the client's profile, goals, routines (with exercise ids; each exercise has a 'paused' flag and 'paused_reason'), recent per-exercise logs (done + how it felt: easy/right/hard/''), recent session summaries (overall feel, duration), and their weekly schedule.",
     "IMPORTANT: Propose AT MOST 5 changes. Never rewrite the whole routine at once — pick only the few highest-impact adjustments. If the client is just starting, a short note plus 1-3 small changes is ideal.",
     "To sideline an injured or painful exercise, use pause_exercise with a short reason. NEVER put status text like 'HOLD' or 'skip' into the sets/reps, and never overwrite an exercise's real numbers to signal a pause. To bring a paused exercise back, use resume_exercise.",
     "Add ONE movement per exercise. NEVER bundle multiple stretches or movements into a single exercise (e.g. a 'recovery stretches' entry listing three stretches is wrong — add three separate cooldown exercises).",
+    "Every add_exercise and every exercise in create_routine MUST include a non-empty 'cue' — a short form reminder of how to do it.",
     "Output RAW JSON only. Do NOT wrap it in markdown code fences or add any prose outside the JSON. Shape exactly:",
     '{"text":"<=120 words plain-language explanation for the client","proposal":[ ops ]}',
     "Allowed ops:",
     '{"type":"update_exercise","exercise_id":<id>,"name":"<current name>","fields":{"scheme":"...","load":"...","cue":"..."}}',
-    '{"type":"add_exercise","workout_code":"A","section":"warmup|main|cooldown","name":"...","scheme":"...","cue":"..."}',
+    '{"type":"add_exercise","workout_code":"A","section":"warmup|main|cooldown","name":"...","scheme":"...","cue":"<required>"}',
     '{"type":"remove_exercise","exercise_id":<id>,"name":"<current name>"}',
     '{"type":"pause_exercise","exercise_id":<id>,"name":"<current name>","reason":"<short reason>"}',
     '{"type":"resume_exercise","exercise_id":<id>,"name":"<current name>"}',
+    '{"type":"create_routine","name":"...","focus":"strength|cardio|mobility","exercises":[{"name":"...","section":"warmup|main|cooldown","scheme":"...","cue":"<required>"}]}',
     '{"type":"note","text":"advice with no data change"}',
     "Include only fields you want to change. Use only exercise ids that exist in the provided routines. If no change is warranted, return an empty proposal with a helpful text.",
   ].join("\n");
 
-  const userMsg = (mode === "review"
-    ? "Review my recent training and propose next week's progression. Keep it to a few focused, safe changes (max 5)."
-    : (message || "Give me coaching guidance."))
-    + "\n\nClient data (JSON):\n" + JSON.stringify(context);
+  const messages: { role: string; content: string }[] = [];
+  for (const m of history.slice(0, -1)) {
+    messages.push({ role: m.role === "user" ? "user" : "assistant", content: m.body });
+  }
+  const lastUser = message || "Give me coaching guidance.";
+  messages.push({ role: "user", content: lastUser + "\n\nClient data (JSON):\n" + JSON.stringify(context) });
 
   async function callModel(m: string) {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": KEY!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: m, max_tokens: 4000, system: sys, messages: [{ role: "user", content: userMsg }] }),
+      body: JSON.stringify({ model: m, max_tokens: 4000, system: sys, messages }),
     });
     const jr = await r.json();
     if (!r.ok) throw new Error(JSON.stringify(jr));
@@ -139,5 +156,5 @@ Deno.serve(async (req) => {
     proposal = [];
   }
 
-  return j({ ok: true, paused: false, model_used: usedModel, lite_mode: usedModel === fallback, text, proposal, budget: { month_spent: monthSpent + cost, month_allowance: monthAllow, year_spent: yearSpent + cost, year_cap: yearCap } });
+  return j({ ok: true, paused: false, text, proposal });
 });
