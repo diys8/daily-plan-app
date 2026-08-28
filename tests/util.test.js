@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmt, mins, esc, tagFromTitle, slugify } from "../public/util.js";
+import { fmt, mins, esc, tagFromTitle, slugify, daysBetween } from "../public/util.js";
 
 describe("fmt — 24h to 12h display", () => {
   it("morning", () => expect(fmt("09:30")).toBe("9:30am"));
@@ -56,4 +56,12 @@ describe("slugify — name to storage slug", () => {
     expect(slugify(null)).toBe("");
   });
   it("collapses multiple separators", () => expect(slugify("Med-ball   throw!!")).toBe("med_ball_throw"));
+});
+
+describe("daysBetween", () => {
+  it("same day is 0", () => expect(daysBetween("2026-08-27", "2026-08-27")).toBe(0));
+  it("next day is 1", () => expect(daysBetween("2026-08-26", "2026-08-27")).toBe(1));
+  it("past date gives negative", () => expect(daysBetween("2026-08-28", "2026-08-27")).toBe(-1));
+  it("across months", () => expect(daysBetween("2026-07-30", "2026-08-02")).toBe(3));
+  it("large gap", () => expect(daysBetween("2026-01-01", "2026-12-31")).toBe(364));
 });

@@ -248,6 +248,15 @@ input,textarea,select{font-family:inherit}
 .recap-feels{justify-content:center;margin-bottom:20px}
 .recap-foot{text-align:center;font-size:12px;color:var(--dim);margin-bottom:14px}
 
+/* hub + routine editor (R5) */
+.rlast{font-size:12px;color:var(--dim);margin-top:2px}
+.tw-row{display:flex;align-items:center;gap:10px;padding:8px 2px;font-size:14px;color:var(--ink)}
+.tw-day{width:36px;font-weight:600;color:var(--dim);font-size:13px;flex-shrink:0}
+.grip{cursor:grab;color:var(--dim);font-size:14px;padding:4px 6px 4px 0;user-select:none;touch-action:none}
+.exrow{display:flex;align-items:center;gap:6px;padding:10px 2px;cursor:pointer}
+.exrow.paused{opacity:.45}
+.exrow.dragging{opacity:.7;background:var(--surf);border-radius:8px}
+
 /* needs demo queue */
 .demo-q-row{background:var(--surf);border:1px solid var(--line);border-radius:10px;
   padding:11px 12px;margin-bottom:7px}

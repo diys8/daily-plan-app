@@ -20,6 +20,7 @@ export const S = {
   OVR: {},
   BDONE: {},
   SESSIONS: {},
+  RECENT_SESSIONS: {},
   DEMO_SET: new Set(),
   newBlock: null,
   view: "plan",

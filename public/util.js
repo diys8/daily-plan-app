@@ -38,6 +38,10 @@ export function slugify(name) {
   return (name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
 
+export function daysBetween(a, b) {
+  return Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+}
+
 export function esc(s) {
   return (s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }

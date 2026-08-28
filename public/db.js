@@ -41,6 +41,12 @@ export async function load() {
   S.BDONE = {}; (bdone || []).forEach(o => { if (o.done) S.BDONE[o.block_id] = true; });
   S.LOGS = {}; (exlogs || []).forEach(l => S.LOGS[l.exercise_id] = { done: !!l.done, feel: l.feel || "" });
   S.SESSIONS = {}; (sessions || []).forEach(s => S.SESSIONS[s.workout_id] = s);
+  const { data: recent } = await sb.from("workout_session")
+    .select("workout_id, on_date, feel, finished_at")
+    .eq("person_id", person.id).not("finished_at", "is", null)
+    .order("on_date", { ascending: false }).limit(50);
+  S.RECENT_SESSIONS = {};
+  (recent || []).forEach(s => { if (!S.RECENT_SESSIONS[s.workout_id]) S.RECENT_SESSIONS[s.workout_id] = s; });
   const { data: demoFiles } = await sb.storage.from("exercise").list("", { limit: 1000 });
   S.DEMO_SET = new Set((demoFiles || []).map(f => f.name));
   S.DATA = { person, days, workouts, goals };

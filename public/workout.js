@@ -1,5 +1,5 @@
 import { S, DAYNAMES, DAYFULL, SUPA_URL } from "./state.js";
-import { esc, fmt, slugify } from "./util.js";
+import { esc, fmt, slugify, daysBetween } from "./util.js";
 import {
   dayFor, workoutByCode, findBlock, reloadAndRender, sb, save, deleteBlockCascade,
   toggleExercise, setFeel, ensureSession, finishSession, markBlockDone, setSessionFeel,
@@ -16,9 +16,34 @@ export function renderHub() {
     const wds = daysForRoutine(w.code);
     const days = wds.length ? wds.map(d => DAYNAMES[d]).join(", ") : "Not scheduled";
     const foc = w.focus || "strength";
+    const last = S.RECENT_SESSIONS[w.id];
+    let lastStr = "Never run";
+    if (last) {
+      const ago = daysBetween(last.on_date, S.todayDate);
+      if (ago === 0) lastStr = "Today";
+      else if (ago === 1) lastStr = "Yesterday";
+      else lastStr = ago + " days ago";
+      if (last.feel) lastStr += " · felt " + last.feel;
+    }
     h += `<div class="rcard" data-routine="${w.code}"><div class="rn">${esc(w.name || ('Routine ' + w.code))}</div>`
-      + `<div class="rm"><span class="fchip ${foc}">${esc(foc)}</span><span>${days}</span><span>· ${w.exercise.length} moves</span></div><span class="rchev">›</span></div>`;
+      + `<div class="rm"><span class="fchip ${foc}">${esc(foc)}</span><span>${days}</span><span>· ${w.exercise.length} moves</span></div>`
+      + `<div class="rlast">${esc(lastStr)}</div><span class="rchev">›</span></div>`;
   });
+
+  const weekOrder = [1, 2, 3, 4, 5, 6, 0];
+  const thisWeek = [];
+  weekOrder.forEach(wd => {
+    S.DATA.workouts.forEach(w => {
+      if (daysForRoutine(w.code).includes(wd)) thisWeek.push({ wd, name: w.name || ("Routine " + w.code) });
+    });
+  });
+  if (thisWeek.length > 0) {
+    h += `<div class="sec">This week</div>`;
+    thisWeek.forEach(t => {
+      h += `<div class="tw-row"><span class="tw-day">${DAYNAMES[t.wd]}</span><span>${esc(t.name)}</span></div>`;
+    });
+  }
+
   h += `<button class="dash" id="newRoutine">+ New routine</button>`;
   h += `<div class="foot">Pick the days a routine runs — its workout block lands on your schedule automatically.</div>`;
   document.getElementById("wrap").innerHTML = h;
@@ -68,10 +93,10 @@ export function renderRoutine() {
     h += `<div class="sec">${label}</div>`;
     exs.forEach(e => {
       if (S.exEditId === e.id) { h += exEditor(e); return; }
-      h += `<div class="exrow" data-ex="${e.id}"><span class="en">${esc(e.name)}${e.paused ? `<span style="color:var(--dim);font-weight:600"> · paused</span>` : ''}</span>${e.scheme ? `<span class="es">${esc(e.scheme)}</span>` : ''}</div>`;
+      h += `<div class="exrow ${e.paused ? "paused" : ""}" data-ex="${e.id}" data-exsec="${secKey}"><span class="grip" data-grip="${e.id}">⋮⋮</span><span class="en">${esc(e.name)}${e.paused ? `<span style="color:var(--dim);font-weight:600"> · paused</span>` : ''}</span>${e.scheme ? `<span class="es">${esc(e.scheme)}</span>` : ''}</div>`;
     });
     if (S.exEditId === "new" && S.exNew && S.exNew.section === secKey) { h += exEditor(S.exNew); }
-    h += `<button class="linkbtn" data-addex="${secKey}">+ Add exercise</button>`;
+    h += `<button class="linkbtn" data-addex="${secKey}" style="color:var(--dim)">+ Add exercise</button>`;
   });
   h += `<div class="foot">Tap an exercise to edit it. Set/rep counts are a guide — the coach will fine-tune them later.</div>`;
   document.getElementById("wrap").innerHTML = h;
@@ -84,19 +109,30 @@ export function renderRoutine() {
   document.querySelectorAll("[data-ex]").forEach(el => el.onclick = () => { S.exEditId = +el.dataset.ex; S.exNew = null; S.render(); });
   document.querySelectorAll("[data-addex]").forEach(el => el.onclick = () => { S.exNew = { section: el.dataset.addex, name: "", scheme: "", cue: "", __new: true }; S.exEditId = "new"; S.render(); });
   if (S.exEditId !== null) wireExEditor();
+  setupDrag(w);
 }
 
 async function saveRoutineName() {
   const nm = document.getElementById("r-name"); if (!nm) return;
   const v = nm.value.trim(); const w = workoutByCode(S.routeCode);
-  if (w && v && v !== w.name) { await save(sb.from("workout").update({ name: v }).eq("id", w.id)); w.name = v; }
+  if (w && v && v !== w.name) {
+    await save(sb.from("workout").update({ name: v }).eq("id", w.id));
+    w.name = v;
+    for (const d of S.DATA.days) {
+      const b = d.block.find(x => x.workout === w.code);
+      if (b) await save(sb.from("block").update({ title: shortName(w) }).eq("id", b.id));
+    }
+  }
 }
 
 async function toggleRoutineDay(wd) {
   const w = workoutByCode(S.routeCode); const day = dayFor(wd);
   const has = day.block.find(b => b.workout === w.code);
-  if (has) { await deleteBlockCascade(has.id); }
-  else {
+  if (has) {
+    const { count } = await sb.from("block_done").select("*", { count: "exact", head: true }).eq("block_id", has.id);
+    if (count > 0 && !confirm("This day has logged workout data. Remove it from " + DAYFULL[wd] + "?")) return;
+    await deleteBlockCascade(has.id);
+  } else {
     const t = (firstWorkoutBlock(w.code)?.time) || "17:00";
     await save(sb.from("block").insert({ day_id: day.id, sort: 99, time: t, title: shortName(w), tag: "play", detail: "", workout: w.code, notify: false }));
   }
@@ -132,6 +168,54 @@ async function onDeleteExercise() {
   if (!confirm("Delete this exercise?")) return;
   await save(sb.from("exercise").delete().eq("id", S.exEditId));
   S.exEditId = null; S.exNew = null; await reloadAndRender();
+}
+
+/* ── drag reorder ────────────────────────────────────── */
+
+function setupDrag(w) {
+  let dragEl = null, startY = 0, secKey = null;
+  document.querySelectorAll("[data-grip]").forEach(grip => {
+    grip.onclick = (ev) => ev.stopPropagation();
+    grip.onpointerdown = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dragEl = grip.closest("[data-ex]");
+      if (!dragEl) return;
+      secKey = dragEl.dataset.exsec;
+      startY = ev.clientY;
+      dragEl.classList.add("dragging");
+      grip.setPointerCapture(ev.pointerId);
+    };
+    grip.onpointermove = (ev) => {
+      if (!dragEl) return;
+      const dy = ev.clientY - startY;
+      const rh = dragEl.offsetHeight;
+      if (Math.abs(dy) < rh * 0.6) return;
+      const dir = dy > 0 ? 1 : -1;
+      const siblings = [...document.querySelectorAll(`[data-exsec="${secKey}"]`)];
+      const idx = siblings.indexOf(dragEl);
+      const swapIdx = idx + dir;
+      if (swapIdx < 0 || swapIdx >= siblings.length) return;
+      if (dir > 0) siblings[swapIdx].after(dragEl);
+      else siblings[swapIdx].before(dragEl);
+      startY = ev.clientY;
+    };
+    grip.onpointerup = async (ev) => {
+      if (!dragEl) return;
+      dragEl.classList.remove("dragging");
+      dragEl = null;
+      const rows = [...document.querySelectorAll(`[data-exsec="${secKey}"]`)];
+      for (let i = 0; i < rows.length; i++) {
+        const eid = +rows[i].dataset.ex;
+        const ex = w.exercise.find(e => e.id === eid);
+        if (ex && ex.sort !== i) {
+          ex.sort = i;
+          await save(sb.from("exercise").update({ sort: i }).eq("id", eid));
+        }
+      }
+      secKey = null;
+    };
+  });
 }
 
 /* ── workout session view ────────────────────────────── */
