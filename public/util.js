@@ -1,6 +1,22 @@
-export function todayStr() {
+export function todayStr(tz) {
   const d = new Date();
+  if (tz) {
+    const p = {};
+    new Intl.DateTimeFormat("en", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" })
+      .formatToParts(d).forEach(x => p[x.type] = x.value);
+    return `${p.year}-${p.month}-${p.day}`;
+  }
   return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+export function todayWd(tz) {
+  const d = new Date();
+  if (tz) {
+    const name = new Intl.DateTimeFormat("en", { timeZone: tz, weekday: "short" }).format(d);
+    const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return map[name] ?? d.getDay();
+  }
+  return d.getDay();
 }
 
 export function fmt(t) {

@@ -1,8 +1,8 @@
-import { S, DAYNAMES, DAYFULL, TODAY_WD, BELL, PENCIL } from "./state.js";
+import { S, DAYNAMES, DAYFULL, BELL, PENCIL } from "./state.js";
 import { fmt, esc, tagFromTitle } from "./util.js";
 import {
   dayFor, workoutByCode, orderedBlocks, currentIdx,
-  toggleItem, toggleExercise, setFeel, resumeExercise, markBlockDone,
+  toggleItem, markBlockDone,
   toggleNotify, enableReminders, allReminders, remOn, anyNotify,
   applyScope, reloadAndRender, sb, save, deleteBlockCascade
 } from "./db.js";
@@ -43,30 +43,11 @@ function checklistView(b) {
   return h;
 }
 
-function movesHtml(code) {
-  const w = workoutByCode(code); if (!w) return "";
-  const main = w.exercise.filter(e => !e.is_footwork), foot = w.exercise.filter(e => e.is_footwork);
-  const logRow = e => {
-    const lg = S.LOGS[e.id] || { done: false, feel: "" };
-    const chip = (v, label) => `<div class="copt ${lg.feel === v ? "on" : ""}" data-feel="${e.id}" data-feelv="${v}">${label}</div>`;
-    return `<div class="mlog"><div class="li ${lg.done ? "done" : ""}" data-exdone="${e.id}"><span class="box"></span><span>Done</span></div>`
-      + `<div class="chips" style="margin-top:8px">${chip("easy","Too easy")}${chip("right","Just right")}${chip("hard","Too hard")}</div></div>`;
-  };
-  const card = e => {
-    if (e.paused) {
-      return `<div class="move paused"><div class="mh"><span class="mn">${esc(e.name)}</span></div>`
-        + `<div class="pausechip">${e.paused_reason ? `Paused — ${esc(e.paused_reason)}` : "Paused"}</div>`
-        + (e.cue ? `<div class="mc">${esc(e.cue)}</div>` : "")
-        + `<div style="margin-top:10px"><button class="btn ghost" data-resume="${e.id}">Resume</button></div></div>`;
-    }
-    return `<div class="move"><div class="mh"><span class="mn">${esc(e.name)}</span><span class="msr">${esc(e.scheme || "")}</span></div>`
-      + (e.cue ? `<div class="mc">${esc(e.cue)}</div>` : "")
-      + (e.breathing ? `<div class="mbr"><span class="mbrlab">Breathing</span><span>${esc(e.breathing)}</span></div>` : "")
-      + `<div class="mtag">${e.demo_slug ? "Demo coming in a later step" : "Text guide"}</div>${logRow(e)}</div>`;
-  };
-  let h = main.map(card).join("");
-  if (foot.length) h += `<div class="sec">Footwork &amp; agility</div>` + foot.map(card).join("");
-  return h;
+function workoutMeta(code) {
+  const w = workoutByCode(code); if (!w) return null;
+  const active = w.exercise.filter(e => !e.paused);
+  const doneCount = active.filter(e => S.LOGS[e.id]?.done).length;
+  return { total: active.length, done: doneCount };
 }
 
 /* ── now card ─────────────────────────────────────────── */
@@ -80,7 +61,10 @@ function nowCardHtml(b, idx, total) {
   h += `</div><div class="now-title">${esc(b.title)}</div>`;
   if (showDetail) h += `<div class="now-desc">${esc(b.detail)}</div>`;
   if (b.checklist_item.length) h += `<div class="now-checks">${checklistView(b)}</div>`;
-  if (b.workout) h += movesHtml(b.workout);
+  if (b.workout) {
+    const wm = workoutMeta(b.workout);
+    if (wm) h += `<div style="margin-top:12px"><button class="btn primary" data-startwk="${b.id}">${wm.done > 0 ? `Continue · ${wm.done}/${wm.total}` : "Start workout"}</button></div>`;
+  }
   h += `<div class="now-actions"><button class="btn ${isDone ? "ghost" : "primary"}" data-done="${b.id}">${isDone ? "Done ✓ · undo" : "Mark done"}</button>`
     + `<button class="btn ghost" data-notify="${b.id}">${BELL} ${b.notify ? "On" : "Remind"}</button>`
     + `<button class="btn ghost" data-editblock="${b.id}">${PENCIL}</button></div></div>`;
@@ -97,7 +81,17 @@ function blockRow(b) {
   let meta = "";
   if (isDone) meta += '<span class="row-done-mark">✓</span>';
   if (ci.length) meta += `${checked}/${ci.length}`;
-  if (b.workout) meta += (ci.length ? " · " : "") + "workout";
+  if (b.workout) {
+    const wm = workoutMeta(b.workout);
+    if (wm) meta += (ci.length ? " · " : "") + `${wm.done}/${wm.total}`;
+  }
+  if (b.workout) {
+    meta += ` <span class="chev">▸</span>`;
+    return `<div data-id="${b.id}"><div class="row-plain" data-startwk="${b.id}">`
+      + `<span class="row-time">${fmt(b.time)}</span>`
+      + `<span class="row-title">${esc(b.title)}</span>`
+      + `<span class="row-meta">${meta}</span></div></div>`;
+  }
   meta += ` <span class="chev">${open ? "▾" : "▸"}</span>`;
   let h = `<div data-id="${b.id}"><div class="row-plain" data-open="${b.id}">`
     + `<span class="row-time">${fmt(b.time)}</span>`
@@ -110,7 +104,7 @@ function blockRow(b) {
 function blockDetail(b) {
   const done = !!S.BDONE[b.id];
   const rem = !!b.notify;
-  return `<div class="detail">${checklistView(b)}${b.workout ? movesHtml(b.workout) : ""}`
+  return `<div class="detail">${checklistView(b)}`
     + `<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">`
     + `<button class="btn ${rem ? "primary" : "ghost"}" data-notify="${b.id}">${BELL} ${rem ? "Reminder on" : "Remind me"}</button>`
     + `<button class="btn ${done ? "ghost" : "primary"}" data-done="${b.id}">${done ? "Done ✓ · undo" : "Mark done"}</button>`
@@ -134,7 +128,7 @@ function blockEditor(b) {
     <div class="field"><label>Apply to</label>
       <div class="chips" id="ed-scope">${isNew
       ? `<div class="copt on" data-scope="wd">Only ${DAYFULL[S.viewWd]}</div><div class="copt" data-scope="weekdays">Every weekday</div><div class="copt" data-scope="weekend">Every weekend</div><div class="copt" data-scope="all">Every day</div>`
-      : (S.viewWd === TODAY_WD
+      : (S.viewWd === S.todayWd
         ? `<div class="copt on" data-scope="today">Only today</div><div class="copt" data-scope="wd">Every ${DAYFULL[S.viewWd]}</div><div class="copt" data-scope="weekdays">Every weekday</div><div class="copt" data-scope="weekend">Every weekend</div><div class="copt" data-scope="all">Every day</div>`
         : `<div class="copt on" data-scope="wd">Every ${DAYFULL[S.viewWd]}</div><div class="copt" data-scope="weekdays">Every weekday</div><div class="copt" data-scope="weekend">Every weekend</div><div class="copt" data-scope="all">Every day</div>`)}
       </div></div>
@@ -197,7 +191,7 @@ async function onSaveEditor() {
   const block = currentEditBlock(); if (!block) return;
   const vals = readEditor();
   if (!vals.title) { alert("Give the block a title."); return; }
-  const scope = document.querySelector("#ed-scope .copt.on")?.dataset.scope || (block.__new ? "wd" : (S.viewWd === TODAY_WD ? "today" : "wd"));
+  const scope = document.querySelector("#ed-scope .copt.on")?.dataset.scope || (block.__new ? "wd" : (S.viewWd === S.todayWd ? "today" : "wd"));
   S.editId = null; S.newBlock = null; S.render();
   await applyScope(block, vals, scope);
   await reloadAndRender();
@@ -271,7 +265,7 @@ export function renderPlan() {
   const day = dayFor(S.viewWd);
   const blocks = orderedBlocks(day);
   const cur = currentIdx(blocks);
-  const isToday = S.viewWd === TODAY_WD;
+  const isToday = S.viewWd === S.todayWd;
   let done = 0; blocks.forEach(b => { if (S.BDONE[b.id]) done++; });
   const total = blocks.length;
 
@@ -366,11 +360,9 @@ function wire() {
   const rb = document.getElementById("remBtn"); if (rb) rb.onclick = () => { S.sheet = { type: "reminders" }; S.render(); };
   const fp = document.getElementById("foldPast"); if (fp) fp.onclick = () => { S.showPast = !S.showPast; S.render(); };
 
+  document.querySelectorAll("[data-startwk]").forEach(el => el.onclick = () => { S.workoutBlockId = +el.dataset.startwk; S.workoutExOpen = null; S.view = "workout"; S.render(); });
   document.querySelectorAll("[data-open]").forEach(el => el.onclick = () => { const id = +el.dataset.open; S.openId = (S.openId === id ? null : id); S.render(); });
   document.querySelectorAll("[data-check]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); toggleItem(+el.dataset.check); });
-  document.querySelectorAll("[data-exdone]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); toggleExercise(+el.dataset.exdone); });
-  document.querySelectorAll("[data-feel]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); setFeel(+el.dataset.feel, el.dataset.feelv); });
-  document.querySelectorAll("[data-resume]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); resumeExercise(+el.dataset.resume); });
   document.querySelectorAll("[data-done]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); markBlockDone(+el.dataset.done); });
   document.querySelectorAll("[data-notify]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); toggleNotify(+el.dataset.notify); });
   document.querySelectorAll("[data-editblock]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); S.editId = +el.dataset.editblock; S.openId = null; S.render(); });

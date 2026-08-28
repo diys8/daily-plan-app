@@ -186,6 +186,33 @@ input,textarea,select{font-family:inherit}
   border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-bottom:8px}
 .coachbox{background:var(--surf);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-top:12px}
 
+/* workout session view */
+.wk-name{flex:1;font-weight:700;font-size:16px;color:var(--ink)}
+.wk-progress{display:flex;gap:2px;margin:12px 0 6px}
+.wk-seg{flex:1;height:4px;background:var(--line);border-radius:2px}
+.wk-seg.done{background:var(--done)}
+.wk-count{font-size:13px;color:var(--dim);margin-bottom:16px}
+.wk-sec-hdr{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim);margin:18px 2px 6px;display:flex;justify-content:space-between}
+.wk-sec-count{font-weight:400}
+.wk-row{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 2px;
+  border-bottom:1px solid var(--line2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wk-row.done{opacity:.5}
+.wk-dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--line);flex-shrink:0}
+.wk-dot.done{background:var(--done);border-color:var(--done)}
+.wk-row-name{flex:1;font-size:15.5px;color:var(--ink)}
+.wk-row-scheme{font-size:13px;color:var(--dim)}
+.wk-card{background:var(--raise);border:1px solid var(--line);border-radius:18px;
+  padding:16px 17px;margin:4px 0;cursor:pointer}
+.wk-card-name{font-size:17px;font-weight:700;color:var(--ink)}
+.wk-card-scheme{font-size:13px;color:var(--dim);margin-top:4px}
+.wk-card-cue{font-size:14px;color:var(--mut);margin-top:8px;line-height:1.4}
+.wk-card-breath{font-size:13px;color:var(--dim);margin-top:8px}
+.wk-card-breath span{color:var(--dim);margin-right:6px}
+.wk-paused{font-size:13px;color:var(--dim);padding:12px 2px;border-bottom:1px solid var(--line2)}
+.wk-review{color:var(--acc);cursor:pointer}
+.wk-finish{width:100%;margin-top:20px}
+
 /* utilities */
 .load{color:var(--mut);text-align:center;padding:48px 0;font-size:14px}
 .err{color:#f0888a;text-align:center;padding:32px 14px;font-size:14px;line-height:1.6}

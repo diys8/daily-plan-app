@@ -1,7 +1,8 @@
 import { S, DAYNAMES, DAYFULL } from "./state.js";
 import { esc } from "./util.js";
 import {
-  dayFor, workoutByCode, reloadAndRender, sb, save, deleteBlockCascade
+  dayFor, workoutByCode, findBlock, reloadAndRender, sb, save, deleteBlockCascade,
+  toggleExercise, setFeel, ensureSession, finishSession, markBlockDone
 } from "./db.js";
 
 function shortName(w) { const n = w.name || ("Routine " + w.code); return n.split("—")[0].split("-")[0].trim() || n; }
@@ -129,4 +130,119 @@ async function onDeleteExercise() {
   if (!confirm("Delete this exercise?")) return;
   await save(sb.from("exercise").delete().eq("id", S.exEditId));
   S.exEditId = null; S.exNew = null; await reloadAndRender();
+}
+
+/* ── workout session view ────────────────────────────── */
+
+export function renderWorkout() {
+  const block = findBlock(S.workoutBlockId);
+  if (!block || !block.workout) { S.view = "plan"; S.render(); return; }
+  const w = workoutByCode(block.workout);
+  if (!w) { S.view = "plan"; S.render(); return; }
+
+  const isToday = S.viewWd === S.todayWd;
+  const active = w.exercise.filter(e => !e.paused);
+  const paused = w.exercise.filter(e => e.paused);
+  const total = active.length;
+  const doneCount = active.filter(e => S.LOGS[e.id]?.done).length;
+
+  let h = `<div class="screen-top"><button class="backb" id="wkBack">‹</button>`
+    + `<span class="wk-name">${esc(w.name || "Workout")}</span>`
+    + `<button class="btn ghost" id="wkEdit">Edit</button></div>`;
+
+  if (total > 0) {
+    h += `<div class="wk-progress">`;
+    active.forEach(e => { h += `<div class="wk-seg ${S.LOGS[e.id]?.done ? "done" : ""}"></div>`; });
+    h += `</div><div class="wk-count">${doneCount} of ${total} done</div>`;
+  }
+
+  const sections = ["warmup", "main", "cooldown"];
+  const secLabel = { warmup: "Warm-up", main: "Main", cooldown: "Cooldown" };
+
+  sections.forEach(secKey => {
+    const secActive = active.filter(e => (e.section || "main") === secKey);
+    const secPaused = paused.filter(e => (e.section || "main") === secKey);
+    if (secActive.length === 0 && secPaused.length === 0) return;
+
+    const secDone = secActive.filter(e => S.LOGS[e.id]?.done).length;
+    h += `<div class="wk-sec-hdr">${secLabel[secKey]} <span class="wk-sec-count">${secDone}/${secActive.length}</span></div>`;
+
+    secActive.forEach(e => {
+      const lg = S.LOGS[e.id] || { done: false, feel: "" };
+
+      if (S.workoutExOpen === e.id) {
+        h += `<div class="wk-card" data-wkex="${e.id}">`;
+        h += `<div class="wk-card-name">${esc(e.name)}</div>`;
+        if (e.scheme) h += `<div class="wk-card-scheme">${esc(e.scheme)}</div>`;
+        if (e.cue) h += `<div class="wk-card-cue">${esc(e.cue)}</div>`;
+        if (e.breathing) h += `<div class="wk-card-breath"><span>Breathing</span> ${esc(e.breathing)}</div>`;
+        if (isToday) {
+          h += `<div class="chips" style="margin:10px 0">`
+            + `<div class="copt ${lg.feel === "easy" ? "on" : ""}" data-feel="${e.id}" data-feelv="easy">Too easy</div>`
+            + `<div class="copt ${lg.feel === "right" ? "on" : ""}" data-feel="${e.id}" data-feelv="right">Just right</div>`
+            + `<div class="copt ${lg.feel === "hard" ? "on" : ""}" data-feel="${e.id}" data-feelv="hard">Too hard</div></div>`;
+          h += `<button class="btn ${lg.done ? "ghost" : "primary"}" data-exdone="${e.id}">${lg.done ? "Done ✓" : "Mark done"}</button>`;
+        }
+        h += `</div>`;
+      } else {
+        h += `<div class="wk-row ${lg.done ? "done" : ""}" data-wkex="${e.id}">`
+          + `<span class="wk-dot ${lg.done ? "done" : ""}"></span>`
+          + `<span class="wk-row-name">${esc(e.name)}</span>`
+          + (e.scheme ? `<span class="wk-row-scheme">${esc(e.scheme)}</span>` : "")
+          + `</div>`;
+      }
+    });
+
+    if (secPaused.length > 0) {
+      const reason = secPaused[0].paused_reason || "";
+      h += `<div class="wk-paused">${secPaused.length} move${secPaused.length > 1 ? "s" : ""} paused`;
+      if (reason) h += ` — ${esc(reason)}`;
+      h += ` · <span class="wk-review" data-review="${w.code}">Review</span></div>`;
+    }
+  });
+
+  if (w.exercise.length === 0) {
+    h += `<div class="hint" style="margin:16px 2px">This routine has no exercises yet.</div>`;
+    h += `<button class="btn primary" id="wkEdit2">Add exercises</button>`;
+  } else if (total === 0 && paused.length > 0) {
+    h += `<div class="hint" style="margin:16px 2px">All exercises are paused. Review them in the routine editor.</div>`;
+  }
+
+  if (isToday && total > 0) {
+    h += `<button class="btn primary wk-finish" id="wkFinish">Finish workout</button>`;
+  }
+
+  document.getElementById("wrap").innerHTML = h;
+  wireWorkout(w, isToday);
+}
+
+function wireWorkout(w, isToday) {
+  document.getElementById("wkBack").onclick = () => { S.view = "plan"; S.workoutBlockId = null; S.workoutExOpen = null; S.render(); };
+  const editBtn = document.getElementById("wkEdit") || document.getElementById("wkEdit2");
+  if (editBtn) editBtn.onclick = () => { S.routeCode = w.code; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); };
+
+  document.querySelectorAll("[data-wkex]").forEach(el => el.onclick = () => {
+    const id = +el.dataset.wkex;
+    S.workoutExOpen = (S.workoutExOpen === id) ? null : id;
+    S.render();
+  });
+
+  if (isToday) {
+    document.querySelectorAll("[data-feel]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); setFeel(+el.dataset.feel, el.dataset.feelv); });
+    document.querySelectorAll("[data-exdone]").forEach(el => el.onclick = async (ev) => {
+      ev.stopPropagation();
+      await ensureSession(w.id);
+      await toggleExercise(+el.dataset.exdone);
+    });
+
+    const fin = document.getElementById("wkFinish");
+    if (fin) fin.onclick = async () => {
+      await ensureSession(w.id);
+      await finishSession(w.id);
+      if (S.workoutBlockId && !S.BDONE[S.workoutBlockId]) await markBlockDone(S.workoutBlockId);
+      S.view = "plan"; S.workoutBlockId = null; S.workoutExOpen = null; S.render();
+    };
+  }
+
+  document.querySelectorAll("[data-review]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.review; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
 }

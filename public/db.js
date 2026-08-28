@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SUPA_URL, SUPA_KEY, VAPID_PUBLIC, S, TODAY_WD } from "./state.js";
-import { todayStr, urlB64, mins } from "./util.js";
+import { SUPA_URL, SUPA_KEY, VAPID_PUBLIC, S } from "./state.js";
+import { todayStr, todayWd, urlB64, mins } from "./util.js";
 
 export const sb = createClient(SUPA_URL, SUPA_KEY);
 
@@ -22,19 +22,25 @@ export async function save(query) {
 export async function load() {
   const { data: person, error: pe } = await sb.from("person").select("*").eq("slug", S.SLUG).single();
   if (pe || !person) throw new Error("Could not find this plan. Check the link.");
+  const tz = person.timezone || undefined;
+  const today = todayStr(tz);
+  S.todayDate = today;
+  S.todayWd = todayWd(tz);
   const { data: days } = await sb.from("day").select("*, block(*, checklist_item(*))").eq("person_id", person.id).order("weekday");
   const { data: workouts } = await sb.from("workout").select("*, exercise(*)").eq("person_id", person.id);
   const { data: goals } = await sb.from("goal").select("*").eq("person_id", person.id).order("sort");
-  const { data: checks } = await sb.from("item_check").select("checklist_item_id,checked").eq("person_id", person.id).eq("on_date", todayStr());
-  const { data: ovr } = await sb.from("block_override").select("block_id,patch").eq("person_id", person.id).eq("on_date", todayStr());
-  const { data: bdone } = await sb.from("block_done").select("block_id,done").eq("person_id", person.id).eq("on_date", todayStr());
-  const { data: exlogs } = await sb.from("exercise_log").select("exercise_id,done,feel").eq("person_id", person.id).eq("on_date", todayStr());
+  const { data: checks } = await sb.from("item_check").select("checklist_item_id,checked").eq("person_id", person.id).eq("on_date", today);
+  const { data: ovr } = await sb.from("block_override").select("block_id,patch").eq("person_id", person.id).eq("on_date", today);
+  const { data: bdone } = await sb.from("block_done").select("block_id,done").eq("person_id", person.id).eq("on_date", today);
+  const { data: exlogs } = await sb.from("exercise_log").select("exercise_id,done,feel").eq("person_id", person.id).eq("on_date", today);
+  const { data: sessions } = await sb.from("workout_session").select("*").eq("person_id", person.id).eq("on_date", today);
   days.forEach(d => { d.block.sort((a,b) => a.sort - b.sort); d.block.forEach(b => b.checklist_item.sort((x,y) => x.sort - y.sort)); });
   workouts.forEach(w => w.exercise.sort((a,b) => a.sort - b.sort));
   S.CHECKS = {}; (checks || []).forEach(c => S.CHECKS[c.checklist_item_id] = c.checked);
   S.OVR = {}; (ovr || []).forEach(o => S.OVR[o.block_id] = o.patch);
   S.BDONE = {}; (bdone || []).forEach(o => { if (o.done) S.BDONE[o.block_id] = true; });
   S.LOGS = {}; (exlogs || []).forEach(l => S.LOGS[l.exercise_id] = { done: !!l.done, feel: l.feel || "" });
+  S.SESSIONS = {}; (sessions || []).forEach(s => S.SESSIONS[s.workout_id] = s);
   S.DATA = { person, days, workouts, goals };
 }
 
@@ -42,7 +48,7 @@ export function dayFor(wd) { return S.DATA.days.find(d => d.weekday === wd); }
 export function workoutByCode(code) { return S.DATA.workouts.find(w => w.code === code); }
 
 export function eff(b) {
-  if (S.viewWd === TODAY_WD && S.OVR[b.id]) return Object.assign({}, b, S.OVR[b.id]);
+  if (S.viewWd === S.todayWd && S.OVR[b.id]) return Object.assign({}, b, S.OVR[b.id]);
   return b;
 }
 
@@ -51,7 +57,7 @@ export function orderedBlocks(day) {
 }
 
 export function currentIdx(blocks) {
-  if (S.viewWd !== TODAY_WD) return -1;
+  if (S.viewWd !== S.todayWd) return -1;
   const now = new Date().getHours() * 60 + new Date().getMinutes();
   let idx = -1;
   blocks.forEach((b,i) => { if (mins(b.time) <= now) idx = i; });
@@ -68,7 +74,7 @@ export async function toggleItem(itemId) {
   S.CHECKS[itemId] = now;
   S.render();
   await save(sb.from("item_check").upsert(
-    { person_id: S.DATA.person.id, checklist_item_id: itemId, on_date: todayStr(), checked: now },
+    { person_id: S.DATA.person.id, checklist_item_id: itemId, on_date: S.todayDate, checked: now },
     { onConflict: "person_id,checklist_item_id,on_date" }));
 }
 
@@ -78,7 +84,7 @@ export async function toggleExercise(exId) {
   S.LOGS[exId] = { done: now, feel: cur.feel };
   S.render();
   await save(sb.from("exercise_log").upsert(
-    { person_id: S.DATA.person.id, exercise_id: exId, on_date: todayStr(), done: now, feel: cur.feel },
+    { person_id: S.DATA.person.id, exercise_id: exId, on_date: S.todayDate, done: now, feel: cur.feel },
     { onConflict: "person_id,exercise_id,on_date" }));
 }
 
@@ -88,7 +94,7 @@ export async function setFeel(exId, feelv) {
   S.LOGS[exId] = { done: cur.done, feel: now };
   S.render();
   await save(sb.from("exercise_log").upsert(
-    { person_id: S.DATA.person.id, exercise_id: exId, on_date: todayStr(), done: cur.done, feel: now },
+    { person_id: S.DATA.person.id, exercise_id: exId, on_date: S.todayDate, done: cur.done, feel: now },
     { onConflict: "person_id,exercise_id,on_date" }));
 }
 
@@ -103,7 +109,7 @@ export async function saveBlockTemplate(id, fields) {
 
 export async function saveBlockToday(id, fields) {
   await save(sb.from("block_override").upsert(
-    { person_id: S.DATA.person.id, block_id: id, on_date: todayStr(), patch: fields },
+    { person_id: S.DATA.person.id, block_id: id, on_date: S.todayDate, patch: fields },
     { onConflict: "person_id,block_id,on_date" }));
 }
 
@@ -140,7 +146,7 @@ export async function markBlockDone(id) {
   if (now) S.BDONE[id] = true; else delete S.BDONE[id];
   S.render();
   await save(sb.from("block_done").upsert(
-    { person_id: S.DATA.person.id, block_id: id, on_date: todayStr(), done: now },
+    { person_id: S.DATA.person.id, block_id: id, on_date: S.todayDate, done: now },
     { onConflict: "person_id,block_id,on_date" }));
 }
 
@@ -231,6 +237,22 @@ export async function deleteBlockCascade(id) {
   if (items) { for (const it of items) { await save(sb.from("item_check").delete().eq("checklist_item_id", it.id)); } }
   await save(sb.from("checklist_item").delete().eq("block_id", id));
   await save(sb.from("block").delete().eq("id", id));
+}
+
+export async function ensureSession(workoutId) {
+  if (S.SESSIONS[workoutId]) return;
+  const sess = await save(sb.from("workout_session").upsert(
+    { person_id: S.DATA.person.id, workout_id: workoutId, on_date: S.todayDate, started_at: new Date().toISOString() },
+    { onConflict: "person_id,workout_id,on_date" }
+  ).select().single());
+  if (sess) S.SESSIONS[workoutId] = sess;
+}
+
+export async function finishSession(workoutId) {
+  await save(sb.from("workout_session").upsert(
+    { person_id: S.DATA.person.id, workout_id: workoutId, on_date: S.todayDate, finished_at: new Date().toISOString() },
+    { onConflict: "person_id,workout_id,on_date" }
+  ));
 }
 
 export async function syncTimezone() {

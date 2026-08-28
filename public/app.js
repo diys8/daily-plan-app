@@ -1,7 +1,7 @@
 import { S } from "./state.js";
 import { load, syncTimezone } from "./db.js";
 import { renderPlan, renderProfile } from "./today.js";
-import { renderHub, renderRoutine } from "./workout.js";
+import { renderHub, renderRoutine, renderWorkout } from "./workout.js";
 import { renderCoach } from "./coach.js";
 
 const params = new URLSearchParams(location.search);
@@ -11,19 +11,25 @@ else { try { slug = localStorage.getItem("dp_slug"); } catch (e) {} }
 if (!slug) slug = "diyanah-7fx3k9";
 S.SLUG = slug;
 
+let lastView = null;
 function render() {
-  if (S.view === "coach") { renderCoach(); updateTabs(); return; }
-  if (S.view === "hub") { renderHub(); updateTabs(); return; }
-  if (S.view === "routine") { renderRoutine(); updateTabs(); return; }
-  if (S.view === "profile") { renderProfile(); updateTabs(); return; }
-  renderPlan(); updateTabs();
+  const sy = (S.view === lastView) ? window.scrollY : 0;
+  lastView = S.view;
+  if (S.view === "coach") renderCoach();
+  else if (S.view === "hub") renderHub();
+  else if (S.view === "routine") renderRoutine();
+  else if (S.view === "workout") renderWorkout();
+  else if (S.view === "profile") renderProfile();
+  else renderPlan();
+  updateTabs();
+  window.scrollTo(0, sy);
 }
 S.render = render;
 
 function updateTabs() {
   document.querySelectorAll(".tab").forEach(t => {
     const tab = t.dataset.tab;
-    const active = (tab === "plan" && S.view === "plan") ||
+    const active = (tab === "plan" && (S.view === "plan" || S.view === "workout")) ||
                    (tab === "hub" && (S.view === "hub" || S.view === "routine")) ||
                    (tab === "coach" && S.view === "coach") ||
                    (tab === "profile" && S.view === "profile");
@@ -53,6 +59,7 @@ function openFromLink() {
 (async () => {
   try {
     await load();
+    if (S.viewWd !== S.todayWd && S.viewWd === new Date().getDay()) S.viewWd = S.todayWd;
     openFromLink();
     render();
     syncTimezone();
