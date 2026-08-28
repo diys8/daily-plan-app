@@ -231,3 +231,19 @@ Nothing in the live app references any of them. All of it is **backed up and ver
 - [x] Stage 4 — Notifications _(built + server-tested: VAPID keys, push_subscription table, service-worker push handlers, in-app Reminders toggle + per-block "mark done" that stops its reminder, notify edge function [tz-aware, respects notify flag + done + today overrides], pg_cron every minute. Scheduler match logic verified. Pending: live phone test after she enables reminders.)_
 - [x] Stage 5 — Workouts hub + routine editor + per-day scheduling + per-exercise logging (#24) + AI coach (#25) all **done & live**.
 - [ ] Stage 6 — Gong's version
+
+### Migration A + Redesign (2026-08-27–28)
+- [x] A0 — R0 partial lockdown (DELETE policies dropped, workout write policies added)
+- [x] A3 — Split `app.js` into seven ES modules
+- [x] A4 — Vitest test runner (34 tests passing)
+- [x] A7 — Render publish dir set to `public/`
+- [x] R1 — Design system + Today view overhaul (commit `6237ba6`)
+- [x] R2 — Workout as its own screen + workout_session table (commit `bd7667f`)
+- [x] R3 — Exercise demos + resolution ladder (commit `b712a31`)
+- [x] R4 — Finishing a workout / recap screen (commit `ed53982`)
+- [x] R5 — Train hub + routine editor overhaul (commit `10a4100`)
+- [x] R6 — Coach thread + quick prompts + coach_message table + edge function v4 (commit `632b55c`)
+- [x] R7 — Profile overhaul + service worker cache bump to dp-v3 (commit `301f5ef`)
+- [ ] Push to GitHub + Render deploy (7 commits ahead of origin/main)
+- [ ] Push shell files from `app_shell_update/`
+- [ ] F7 — Backups

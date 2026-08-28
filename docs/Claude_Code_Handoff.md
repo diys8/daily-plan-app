@@ -42,15 +42,19 @@ Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.
 - One data fix: Thursday had two 09:00 Breakfast blocks both notifying; `block id=38` set `notify=false`.
 - **It was verified statically, not live** — neither machine could reach the running app. Assume it works; confirm on the phone.
 
-**What's still open, roughly in order** _(updated 2026-08-26, end of the first Claude Code session)_**:**
-1. ~~**Push `app_shell_update/` to the repo.**~~ **Done** — commit `74163bf`, deployed, phone steps completed. A1 is answered: push access works.
-2. ~~**Approve deleting three leftovers.**~~ **Done 2026-08-26.** `app` and `publish` are stubbed and locked (401 to anyone); the storage bucket is private. Archived first to `Health/_archive/dead_supabase_functions_2026-08-26/`. **Two clicks still mine:** Supabase dashboard → Edge Functions → delete `app` and `publish`. They are inert, so it is tidying, not urgent.
-2b. **Backups — now the top item (F7).** The audit ranked this above F1: it is the only finding where the loss is permanent. Free plan, no restorable backups, no export, no restore ever performed. My plan, routines and every training log sit in one place with no copy.
-3. **Finish R0.** F1 proper — 7 `anon` DELETE policies remain and the browser still talks to PostgREST directly with the key in page source. **Confirmed worse than it reads:** `person` is readable by anyone holding that key, so both private slugs can simply be listed, and the private-link model protects nothing. F2 — the `save()` wrapper; about twenty writes never check for errors, so a failed write looks exactly like a successful one. F7 — nothing backs up my plan, routines or logs.
-4. **Before any deploy:** reconnect Render to GitHub (pushes currently do **not** deploy — auto-deploy has never once fired) **and** move the site files into their own folder, in the same change. Otherwise the next deploy publishes `docs/`, `src/` and `supabase/` at the app's public address.
-5. **Migration A steps A3–A7.** A3 is splitting `app.js` into modules.
-6. **A known destructive bug, scheduled R5:** un-toggling a day in the routine editor runs `deleteBlockCascade` and deletes the block **and its logs**, silently, with no confirm. I've been avoiding day toggles. Needs a confirm step.
-7. Then R1–R7.
+**What's still open, roughly in order** _(updated 2026-08-28, end of redesign session)_**:**
+
+**Migration A — done.** A0, A3, A4, A7 all complete. Code split into seven ES modules, Vitest running (34 tests), Render publish dir set to `public/`.
+
+**Redesign R1–R7 — done.** All seven stages built and committed locally (commits `6237ba6` through `301f5ef`). Coach edge function redeployed as v4 with conversation history and session data. `coach_message` table created. Service worker cache bumped to `dp-v3`.
+
+**What remains:**
+1. **Push 7 local commits to GitHub** and trigger a Render deploy. Auto-deploy is still broken.
+2. **Push the shell files** from `Health/app_shell_update/` to `github.com/diys8/daily-plan-app-f2`. Needs Diyanah's GitHub credentials.
+3. **Backups (F7).** Still the top-priority safety item. No export, no restore ever performed.
+4. **R0 security items still open.** F1 proper — 7 `anon` DELETE policies remain, browser talks to PostgREST directly. The private-link model protects nothing. These wait for Migration B (real auth).
+5. **Supabase cleanup.** Delete inert `app` and `publish` edge functions from the dashboard (two clicks, non-urgent).
+6. **Migration B** — real accounts, Supabase Auth, per-user data. Not started; waits until Diyanah decides friends-or-product.
 
 **Reference (phone-readable versions of the same material):**
 - Redesign, 11 screens — https://claude.ai/code/artifact/becf8c2d-1715-479d-b01d-3b0b12057210
@@ -64,4 +68,4 @@ Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.
 
 ~~**Start with A1: confirm push access to `github.com/diys8/daily-plan-app`, then tell me what you found and what A2 will look like.** Don't clean anything up in the first commit — commit exactly what's running today, so we can tell later whether a change broke something.~~
 
-**A1 and A2 are done (2026-08-26).** The snapshot is commit `32e6e23`; the first commit was kept verbatim as asked. Read the **Status** section of `Migration_Plan.md` first — it carries what A2 found, the security position, and the ordered list of what's next. **Start by asking me about item 2 above** (the three leftovers awaiting deletion); don't delete anything without my explicit yes.
+**Migration A and Redesign R1–R7 are done (2026-08-28).** 10 local commits, 7 not yet pushed. Read the **Status** section of `Migration_Plan.md` for the full table. Next priorities: push + deploy, backups (F7), then decide on Migration B.

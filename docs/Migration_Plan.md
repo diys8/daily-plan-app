@@ -6,16 +6,26 @@ _Written 2026-08-24. Companion to `App_Build_Plan.md`, `Redesign_Build_Order.md`
 
 ---
 
-## Status — 2026-08-26 (updated end of first Claude Code session)
+## Status — 2026-08-28 (updated end of redesign session)
 
-**Migration A is under way. A1 and A2 are done. A3 is next.**
+**Migration A complete. Redesign R1–R7 complete. Commits not yet pushed.**
 
 | Step | State |
 |---|---|
 | **A1** — take stock of the repo | **Done.** Push access confirmed. |
 | **A2** — export what exists into files | **Done.** Commit `32e6e23`. |
-| **A3** — split into modules | **Next.** |
-| A4–A7 | Not started. |
+| **A3** — split into modules | **Done.** Seven ES modules. |
+| **A4** — Vitest test runner | **Done.** 34 tests passing. |
+| **A7** — Render publish dir | **Done.** Set to `public/`. |
+| **R1** — Design system + Today | **Done.** Commit `6237ba6`. |
+| **R2** — Workout as its own screen | **Done.** Commit `bd7667f`. |
+| **R3** — Exercise demos + resolution ladder | **Done.** Commit `b712a31`. |
+| **R4** — Finishing a workout (recap) | **Done.** Commit `ed53982`. |
+| **R5** — Train hub + routine editor | **Done.** Commit `10a4100`. |
+| **R6** — Coach thread + quick prompts | **Done.** Commit `632b55c`. Edge function v4 deployed. |
+| **R7** — Profile overhaul + SW cache bump | **Done.** Commit `301f5ef`. Shell files not yet pushed. |
+
+**10 local commits ahead of origin/main — need a `git push` and Render deploy.**
 
 ### What was done
 

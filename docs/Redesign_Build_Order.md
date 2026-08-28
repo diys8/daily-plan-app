@@ -148,7 +148,9 @@ Rename a routine and reload — it should stick, which it does not today. Then t
 
 ---
 
-## Stage R1 — Design system + Today
+## Stage R1 — Design system + Today ✓ (commit `6237ba6`)
+
+> **Done 2026-08-27.** Design tokens applied, bottom tab bar wired, day strip, NOW card, past-blocks fold, progress ring. Category colours removed.
 
 ### Build
 - Swap in the token block. Delete `.t-food/.t-work/.t-play/.t-rest` colour mapping and every category-coloured border, dot and background.
@@ -183,7 +185,9 @@ Open the app. Is the right block current? Tick something and reload — did it s
 
 ---
 
-## Stage R2 — The workout as its own screen
+## Stage R2 — The workout as its own screen ✓ (commit `bd7667f`)
+
+> **Done 2026-08-27.** Workout view with sections (warmup/main/cooldown), accordion open-one-at-a-time, feel chips, segmented progress bar, paused-exercise grouping. `workout_session` table created. F4 (one definition of "today") and F8 (scroll position) fixed.
 
 ### Build
 - A block with `workout` set opens a **new `workout` view**. Remove the inline `movesHtml` path from the day list.
@@ -239,7 +243,9 @@ Open Tuesday → Strength A. Are the three sections right and their counts corre
 
 ---
 
-## Stage R3 — Exercise demos, and the problem of new exercises
+## Stage R3 — Exercise demos, and the problem of new exercises ✓ (commit `b712a31`)
+
+> **Done 2026-08-27.** Resolution ladder (two-frame animation → single frame → cue card), light plate styling, `demo_slug` immutable after creation. Images served from Supabase Storage bucket `exercise`.
 
 **This stage carries the one genuinely unsolved problem in the project. Read §R3.1 before building.**
 
@@ -301,7 +307,9 @@ Open Strength A and the Bulgarian split squat — does it loop? Then open a move
 
 ---
 
-## Stage R4 — Finishing a workout
+## Stage R4 — Finishing a workout ✓ (commit `ed53982`)
+
+> **Done 2026-08-27.** Recap view with stats (minutes, moves, per-section breakdown, skipped list), feel question (easy/solid/rough), "Saved as you went" messaging. Block-level Mark done removed from workout blocks.
 
 ### Build
 - Finish (or ticking the last exercise) opens the **`recap` view**.
@@ -331,7 +339,9 @@ Run a whole workout to the end. Answer the question. Go back to Today and check 
 
 ---
 
-## Stage R5 — Train hub + routine editor
+## Stage R5 — Train hub + routine editor ✓ (commit `10a4100`)
+
+> **Done 2026-08-27.** Hub with "Last done N days ago · felt X", This Week list, + New routine. Editor with day pills, per-day times, pointer-event drag reorder within sections. Destructive toggle safeguard added (confirms when logged data exists). Rename syncs block titles across all days. 34 Vitest tests passing (added `daysBetween` tests).
 
 ### Build
 - **Hub:** each routine shows name, neutral focus chip, the days and times it runs, move count, and **"Last done N days ago · felt X"** from `workout_session`. Never run → says so. Below, a **This week** list. `+ New routine`. Remove the "Ask the coach" link — Coach is a tab.
@@ -359,7 +369,9 @@ Reorder an exercise and reload. Then try to un-toggle a day that has logged sets
 
 ---
 
-## Stage R6 — Coach
+## Stage R6 — Coach ✓ (commit `632b55c`)
+
+> **Done 2026-08-27.** Thread-based conversation (messages persist in `coach_message` table). Quick prompts. `create_routine` proposal type. `cue` required on all coach-proposed exercises. Edge function v4 deployed — receives conversation history (last 20 messages), workout session data, and weekly schedule as context. Model badge and spend line removed.
 
 ### Build
 - **Thread, not a form.** New table `coach_message (id, person_id, role, text, created_at)`. Render history; asking again stops wiping the last answer.
@@ -415,7 +427,9 @@ Ask it to build a short cardio session. Untick one move, apply, and check it tur
 
 ---
 
-## Stage R7 — You, and installing properly
+## Stage R7 — You, and installing properly ✓ (commit `301f5ef`)
+
+> **Done 2026-08-28.** Profile reorganised into Training / Goals / App sections. Training level three-option chip picker (beginner/intermediate/advanced) with amber hint when unset. Reminders row tappable, timezone display-only. Service worker cache bumped to `dp-v3`. Shell files (`app_shell_update/`) still need to be pushed separately.
 
 ### Build
 - **Profile becomes the `profile` view.** Rows of label + value + chevron, grouped Training / Goals / App.
