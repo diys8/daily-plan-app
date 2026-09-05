@@ -13,26 +13,44 @@ S.SLUG = slug;
 
 let lastView = null;
 function render() {
-  const sy = (S.view === lastView) ? window.scrollY : 0;
-  lastView = S.view;
-  if (S.view === "coach") renderCoach();
-  else if (S.view === "hub") renderHub();
-  else if (S.view === "routine") renderRoutine();
-  else if (S.view === "workout") renderWorkout();
-  else if (S.view === "recap") renderRecap();
-  else if (S.view === "profile") renderProfile();
-  else renderPlan();
-  updateTabs();
-  window.scrollTo(0, sy);
+  const wrap = document.getElementById("wrap");
+  const viewChanged = S.view !== lastView;
+  const sy = viewChanged ? 0 : window.scrollY;
+  if (viewChanged && wrap) {
+    wrap.classList.add("fade");
+    requestAnimationFrame(() => {
+      lastView = S.view;
+      if (S.view === "coach") renderCoach();
+      else if (S.view === "hub") renderHub();
+      else if (S.view === "routine") renderRoutine();
+      else if (S.view === "workout") renderWorkout();
+      else if (S.view === "recap") renderRecap();
+      else if (S.view === "profile") renderProfile();
+      else renderPlan();
+      updateTabs();
+      window.scrollTo(0, sy);
+      requestAnimationFrame(() => wrap.classList.remove("fade"));
+    });
+  } else {
+    lastView = S.view;
+    if (S.view === "coach") renderCoach();
+    else if (S.view === "hub") renderHub();
+    else if (S.view === "routine") renderRoutine();
+    else if (S.view === "workout") renderWorkout();
+    else if (S.view === "recap") renderRecap();
+    else if (S.view === "profile") renderProfile();
+    else renderPlan();
+    updateTabs();
+    window.scrollTo(0, sy);
+  }
 }
 S.render = render;
 
 function updateTabs() {
   document.querySelectorAll(".tab").forEach(t => {
     const tab = t.dataset.tab;
-    const active = (tab === "plan" && (S.view === "plan" || S.view === "workout" || S.view === "recap")) ||
-                   (tab === "hub" && (S.view === "hub" || S.view === "routine")) ||
-                   (tab === "coach" && S.view === "coach") ||
+    const active = (tab === "plan" && S.view === "plan") ||
+                   (tab === "hub" && (S.view === "hub" || S.view === "routine" || S.view === "coach" || S.view === "workout" || S.view === "recap")) ||
                    (tab === "profile" && S.view === "profile");
     t.classList.toggle("active", active);
   });
@@ -43,7 +61,6 @@ document.querySelectorAll(".tab").forEach(t => {
     const tab = t.dataset.tab;
     if (tab === "plan") S.view = "plan";
     else if (tab === "hub") S.view = "hub";
-    else if (tab === "coach") { S.view = "coach"; S.coachBusy = false; S.coachApplied = false; }
     else if (tab === "profile") S.view = "profile";
     S.render();
   };

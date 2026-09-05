@@ -3,52 +3,73 @@ import { esc, fmt, slugify, daysBetween } from "./util.js";
 import {
   dayFor, workoutByCode, findBlock, reloadAndRender, sb, save, deleteBlockCascade,
   toggleExercise, setFeel, ensureSession, finishSession, markBlockDone, setSessionFeel,
-  demoMode, demoSrc
+  demoMode, demoSrc, showToast
 } from "./db.js";
 
 function shortName(w) { const n = w.name || ("Routine " + w.code); return n.split("—")[0].split("-")[0].trim() || n; }
+function displayName(w) { const n = w.name || ("Routine " + w.code); const i = n.indexOf("—"); if (i > 0) { const after = n.slice(i + 1).trim(); if (after) return after.charAt(0).toUpperCase() + after.slice(1); } return n; }
 function daysForRoutine(code) { return S.DATA.days.filter(d => d.block.some(b => b.workout === code)).map(d => d.weekday).sort((a, b) => a - b); }
 function firstWorkoutBlock(code) { for (const d of S.DATA.days) { const b = d.block.find(x => x.workout === code); if (b) return b; } return null; }
 
-export function renderHub() {
-  let h = `<div class="screen-top"><div class="hi">Train</div></div>`;
-  S.DATA.workouts.forEach(w => {
-    const wds = daysForRoutine(w.code);
-    const days = wds.length ? wds.map(d => DAYNAMES[d]).join(", ") : "Not scheduled";
-    const foc = w.focus || "strength";
-    const last = S.RECENT_SESSIONS[w.id];
-    let lastStr = "Never run";
-    if (last) {
-      const ago = daysBetween(last.on_date, S.todayDate);
-      if (ago === 0) lastStr = "Today";
-      else if (ago === 1) lastStr = "Yesterday";
-      else lastStr = ago + " days ago";
-      if (last.feel) lastStr += " · felt " + last.feel;
-    }
-    h += `<div class="rcard" data-routine="${w.code}"><div class="rn">${esc(w.name || ('Routine ' + w.code))}</div>`
-      + `<div class="rm"><span class="fchip ${foc}">${esc(foc)}</span><span>${days}</span><span>· ${w.exercise.length} moves</span></div>`
-      + `<div class="rlast">${esc(lastStr)}</div><span class="rchev">›</span></div>`;
-  });
+function coachCardHtml(text) {
+  return `<div class="coach-nudge" data-opencoach="1">`
+    + `<svg viewBox="0 0 24 24" width="20" height="20" class="coach-nudge-icon"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`
+    + `<div class="coach-nudge-body"><div class="coach-nudge-text">${esc(text)}</div>`
+    + `<div class="coach-nudge-link">Ask the coach ›</div></div></div>`;
+}
 
-  const weekOrder = [1, 2, 3, 4, 5, 6, 0];
-  const thisWeek = [];
-  weekOrder.forEach(wd => {
-    S.DATA.workouts.forEach(w => {
-      if (daysForRoutine(w.code).includes(wd)) thisWeek.push({ wd, name: w.name || ("Routine " + w.code) });
-    });
+function getCoachNudge() {
+  for (const w of S.DATA.workouts) {
+    const sess = S.RECENT_SESSIONS[w.id];
+    if (sess && sess.feel === "rough") return `Last ${shortName(w)} felt rough. Want to adjust?`;
+  }
+  return "Ask for advice or get a weekly review.";
+}
+
+function wireCoachCard(from) {
+  document.querySelectorAll("[data-opencoach]").forEach(el => el.onclick = () => {
+    S.coachFrom = from; S.view = "coach"; S.coachBusy = false; S.coachApplied = false; S.render();
   });
-  if (thisWeek.length > 0) {
-    h += `<div class="sec">This week</div>`;
-    thisWeek.forEach(t => {
-      h += `<div class="tw-row"><span class="tw-day">${DAYNAMES[t.wd]}</span><span>${esc(t.name)}</span></div>`;
+}
+
+export function renderHub() {
+  let h = `<div class="screen-top"><div class="hi">Train</div>`
+    + `<button class="btn-icon" id="newRoutine" style="font-size:24px;color:var(--acc)">+</button></div>`;
+
+  if (S.DATA.workouts.length === 0) {
+    h += `<div class="train-empty">`
+      + `<div class="train-empty-icon"><svg viewBox="0 0 24 24" width="32" height="32"><path d="M6 7v10M18 7v10M4 9v6M20 9v6M6 12h12" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></div>`
+      + `<div class="train-empty-title">No routines yet</div>`
+      + `<div class="train-empty-desc">Create a routine with your exercises, set which day it runs, and track how each session feels.</div>`
+      + `<button class="btn primary" id="newRoutineEmpty" style="width:100%;margin-top:16px">Create a routine</button></div>`;
+    h += coachCardHtml("Not sure where to start? The coach can help you build one.");
+  } else {
+    h += coachCardHtml(getCoachNudge());
+    h += `<div class="sec">Routines</div>`;
+    S.DATA.workouts.forEach(w => {
+      const wds = daysForRoutine(w.code);
+      const days = wds.length ? wds.map(d => DAYNAMES[d]).join(", ") : "Not scheduled";
+      const last = S.RECENT_SESSIONS[w.id];
+      let lastStr = "Never run";
+      if (last) {
+        const ago = daysBetween(last.on_date, S.todayDate);
+        if (ago === 0) lastStr = "Today";
+        else if (ago === 1) lastStr = "Yesterday";
+        else lastStr = ago + "d ago";
+      }
+      h += `<div class="rcard" data-routine="${w.code}"><div class="rn">${esc(displayName(w))}</div>`
+        + `<div class="rm">${esc(days)} · ${w.exercise.length} exercises · ${esc(lastStr)}</div>`
+        + `<span class="rchev">›</span></div>`;
     });
   }
 
-  h += `<button class="dash" id="newRoutine">+ New routine</button>`;
-  h += `<div class="foot">Pick the days a routine runs — its workout block lands on your schedule automatically.</div>`;
   document.getElementById("wrap").innerHTML = h;
-  document.getElementById("newRoutine").onclick = newRoutine;
+  const nb = document.getElementById("newRoutine");
+  const nb2 = document.getElementById("newRoutineEmpty");
+  if (nb) nb.onclick = newRoutine;
+  if (nb2) nb2.onclick = newRoutine;
   document.querySelectorAll("[data-routine]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.routine; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
+  wireCoachCard("hub");
 }
 
 async function newRoutine() {
@@ -122,6 +143,7 @@ async function saveRoutineName() {
       const b = d.block.find(x => x.workout === w.code);
       if (b) await save(sb.from("block").update({ title: shortName(w) }).eq("id", b.id));
     }
+    showToast("Saved ✓");
   }
 }
 
@@ -162,6 +184,7 @@ async function onSaveExercise() {
   if (S.exEditId === "new") { await save(sb.from("exercise").insert({ workout_id: w.id, name, scheme, cue, section, sort: w.exercise.length, demo_slug: slugify(name) })); }
   else { await save(sb.from("exercise").update({ name, scheme, cue, section }).eq("id", S.exEditId)); }
   S.exEditId = null; S.exNew = null; await reloadAndRender();
+  showToast("Saved ✓");
 }
 
 async function onDeleteExercise() {
@@ -245,6 +268,8 @@ export function renderWorkout() {
     h += `</div><div class="wk-count">${doneCount} of ${total} done</div>`;
   }
 
+  h += coachCardHtml("Ask about this routine — swap a move, check form, adjust load.");
+
   const sections = ["warmup", "main", "cooldown"];
   const secLabel = { warmup: "Warm-up", main: "Main", cooldown: "Cooldown" };
 
@@ -256,7 +281,7 @@ export function renderWorkout() {
     const secDone = secActive.filter(e => S.LOGS[e.id]?.done).length;
     h += `<div class="wk-sec-hdr">${secLabel[secKey]} <span class="wk-sec-count">${secDone}/${secActive.length}</span></div>`;
 
-    secActive.forEach(e => {
+    secActive.forEach((e, eIdx) => {
       const lg = S.LOGS[e.id] || { done: false, feel: "" };
 
       if (S.workoutExOpen === e.id) {
@@ -271,7 +296,7 @@ export function renderWorkout() {
           const sfx = S.DEMO_SET.has(e.demo_slug + "_0.png") ? "_0.png" : ".png";
           h += `<div class="demo-plate"><img src="${demoSrc(e.demo_slug, sfx)}" alt="" onerror="this.style.display='none'"></div>`;
         }
-        h += `<div class="wk-card-name">${esc(e.name)}</div>`;
+        h += `<div class="wk-card-name"><span class="wk-num ${lg.done ? "done" : ""}" style="margin-right:8px">${eIdx + 1}</span>${esc(e.name)}</div>`;
         if (e.scheme) h += `<div class="wk-card-scheme">${esc(e.scheme)}</div>`;
         if (e.cue) h += `<div class="wk-card-cue">${esc(e.cue)}</div>`;
         if (dm === "none") h += `<button class="btn ghost demo-req" data-reqdem="1">Request a demo</button>`;
@@ -286,7 +311,7 @@ export function renderWorkout() {
         h += `</div>`;
       } else {
         h += `<div class="wk-row ${lg.done ? "done" : ""}" data-wkex="${e.id}">`
-          + `<span class="wk-dot ${lg.done ? "done" : ""}"></span>`
+          + `<span class="wk-num ${lg.done ? "done" : ""}">${eIdx + 1}</span>`
           + `<span class="wk-row-name">${esc(e.name)}</span>`
           + (e.scheme ? `<span class="wk-row-scheme">${esc(e.scheme)}</span>` : "")
           + `</div>`;
@@ -354,6 +379,7 @@ function wireWorkout(w, isToday) {
 
   document.querySelectorAll("[data-review]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.review; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
   document.querySelectorAll("[data-reqdem]").forEach(el => el.onclick = (ev) => { ev.stopPropagation(); S.view = "profile"; S.render(); });
+  wireCoachCard("workout");
 }
 
 /* ── recap view ─────────────────────────────────────────── */
@@ -389,7 +415,7 @@ export function renderRecap() {
     .toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
   let h = `<div class="recap">`;
-  h += `<div class="recap-head"><div class="recap-name">${esc(w.name || "Workout")}</div><div class="recap-badge">Done ✓</div></div>`;
+  h += `<div class="recap-head"><div class="recap-name">${esc(w.name || "Workout")}</div><div class="recap-burst"><div class="recap-badge">Done ✓</div></div></div>`;
   h += `<div class="recap-meta">${dateStr}`;
   if (timeRange) h += ` · ${timeRange}`;
   h += `</div>`;
@@ -406,9 +432,9 @@ export function renderRecap() {
     if (secActive.length === 0) return;
     const secDone = secActive.filter(e => S.LOGS[e.id]?.done).length;
     h += `<div class="recap-sec">${secLabel[secKey]} <span>${secDone}/${secActive.length}</span></div>`;
-    secActive.forEach(e => {
+    secActive.forEach((e, eIdx) => {
       const d = S.LOGS[e.id]?.done;
-      h += `<div class="recap-ex"><span class="recap-dot ${d ? "done" : ""}"></span><span>${esc(e.name)}</span>`;
+      h += `<div class="recap-ex"><span class="wk-num ${d ? "done" : ""}" style="width:20px;height:20px;font-size:11px">${eIdx + 1}</span><span>${esc(e.name)}</span>`;
       if (!d) h += `<span class="recap-skip">skipped</span>`;
       h += `</div>`;
     });

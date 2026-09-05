@@ -40,7 +40,7 @@ Database and edge functions on Supabase (project ref `nalxowbclhvopjqkvweh`).
 --ink:   #f2f4f7   primary text
 --mut:   #9ba3ad   secondary text, cues
 --dim:   #6f7883   labels, meta, times
---acc:   #f2952c   AMBER — anything tappable
+--acc:   #F5A623   AMBER — anything tappable
 --onacc: #150f05   text on amber
 --done:  #a7712e   BRONZE — done only, fill never text
 ```
@@ -54,10 +54,11 @@ rendered.
 Full reasoning for each is in `DECISIONS.md`.
 
 - **One action colour everywhere.** No colour-coding by category.
-- **Bottom nav:** Today · Train · Coach · You. "Train", not "Workouts."
+- **Bottom nav:** Today · Train · You (three tabs). Coach lives inside Train
+  and inside the workout session view, not as its own tab.
 - **Exercise demos** from Diyanah's own illustrations (`exercise_img/`).
   No external library as primary source.
-- **App icon:** the "timeline" mark, flat amber `#f2952c`.
+- **App icon:** the "timeline" mark, flat amber `#F5A623`.
 - **No bundler, no framework, no compile step.**
 - **Migration B waits** until after the redesign ships.
 

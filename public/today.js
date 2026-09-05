@@ -5,7 +5,7 @@ import {
   toggleItem, markBlockDone,
   toggleNotify, enableReminders, allReminders, remOn, anyNotify,
   applyScope, reloadAndRender, sb, save, deleteBlockCascade,
-  demoMode
+  demoMode, showToast
 } from "./db.js";
 
 /* ── helpers ──────────────────────────────────────────── */
@@ -32,7 +32,7 @@ function ringHtml(done, total) {
   if (total === 0) return "";
   const r = 15, c = 2 * Math.PI * r;
   const offset = c * (1 - done / total);
-  return `<svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="${r}" fill="none" stroke="var(--line)" stroke-width="3"/><circle cx="18" cy="18" r="${r}" fill="none" stroke="var(--done)" stroke-width="3" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" transform="rotate(-90 18 18)" stroke-linecap="round"/><text x="18" y="20.5" text-anchor="middle" font-size="10">${done}/${total}</text></svg>`;
+  return `<svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="${r}" fill="none" stroke="var(--line)" stroke-width="3"/><circle cx="18" cy="18" r="${r}" fill="none" stroke="var(--acc)" stroke-width="3" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}" transform="rotate(-90 18 18)" stroke-linecap="round"/><text x="18" y="20.5" text-anchor="middle" font-size="11" font-weight="700">${done}/${total}</text></svg>`;
 }
 
 function checklistView(b) {
@@ -51,6 +51,18 @@ function workoutMeta(code) {
   return { total: active.length, done: doneCount };
 }
 
+function blockIcon(tag, hasWorkout) {
+  const paths = {
+    food: '<path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>',
+    work: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+    play: '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16" fill="currentColor" stroke="none"/>',
+    rest: '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>',
+    workout: '<path d="M6 7v10M18 7v10M4 9v6M20 9v6M6 12h12"/>'
+  };
+  const key = hasWorkout ? "workout" : (paths[tag] ? tag : "work");
+  return `<span class="block-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[key]}</svg></span>`;
+}
+
 /* ── now card ─────────────────────────────────────────── */
 
 function nowCardHtml(b, idx, total) {
@@ -58,7 +70,7 @@ function nowCardHtml(b, idx, total) {
   const ciTexts = new Set(b.checklist_item.map(ci => ci.text.trim().toLowerCase()));
   const showDetail = b.detail && !ciTexts.has(b.detail.trim().toLowerCase());
   let h = `<div class="now"><div class="now-label"><span class="pulse"></span>Now · ${fmt(b.time)}`;
-  if (total > 1) h += ` · ${idx + 1} of ${total}`;
+  if (total > 1) h += ` · step ${idx + 1} of ${total}`;
   h += `</div><div class="now-title">${esc(b.title)}</div>`;
   if (showDetail) h += `<div class="now-desc">${esc(b.detail)}</div>`;
   if (b.checklist_item.length) h += `<div class="now-checks">${checklistView(b)}</div>`;
@@ -81,9 +93,11 @@ function nowCardHtml(b, idx, total) {
 
 /* ── plain row + detail ───────────────────────────────── */
 
-function blockRow(b) {
+function blockRow(b, isPast) {
   const open = b.id === S.openId;
   const isDone = !!S.BDONE[b.id];
+  const tag = tagFromTitle(b.title);
+  const icon = blockIcon(tag, !!b.workout);
   const ci = b.checklist_item;
   const checked = ci.filter(c => S.CHECKS[c.id]).length;
   let meta = "";
@@ -95,14 +109,16 @@ function blockRow(b) {
   }
   if (b.workout) {
     meta += ` <span class="chev">▸</span>`;
-    return `<div data-id="${b.id}"><div class="row-plain" data-startwk="${b.id}">`
+    return `<div data-id="${b.id}" class="${isPast ? 'row-past' : ''}"><div class="row-plain${isDone ? ' done' : ''}" data-startwk="${b.id}">`
       + `<span class="row-time">${fmt(b.time)}</span>`
+      + icon
       + `<span class="row-title">${esc(b.title)}</span>`
       + `<span class="row-meta">${meta}</span></div></div>`;
   }
   meta += ` <span class="chev">${open ? "▾" : "▸"}</span>`;
-  let h = `<div data-id="${b.id}"><div class="row-plain" data-open="${b.id}">`
+  let h = `<div data-id="${b.id}" class="${isPast ? 'row-past' : ''}"><div class="row-plain${isDone ? ' done' : ''}" data-open="${b.id}">`
     + `<span class="row-time">${fmt(b.time)}</span>`
+    + icon
     + `<span class="row-title">${esc(b.title)}</span>`
     + `<span class="row-meta">${meta}</span></div>`;
   if (open) h += `<div class="detail-wrap">${blockDetail(b)}</div>`;
@@ -203,6 +219,7 @@ async function onSaveEditor() {
   S.editId = null; S.newBlock = null; S.render();
   await applyScope(block, vals, scope);
   await reloadAndRender();
+  showToast("Saved ✓");
 }
 
 async function onDeleteBlock() {
@@ -231,6 +248,7 @@ async function onSaveProfile() {
   for (const ex of S.DATA.goals) { if (!keptIds.has(ex.id)) await save(sb.from("goal").delete().eq("id", ex.id)); }
   let sort = 0; for (const g of goals) { if (g.id) await save(sb.from("goal").update({ text: g.text, sort }).eq("id", g.id)); else await save(sb.from("goal").insert({ person_id: S.DATA.person.id, text: g.text, sort })); sort++; }
   await reloadAndRender();
+  showToast("Saved ✓");
 }
 
 const DEMO_STYLE = "Flat vector illustration, clean minimalist fitness-guide style. A young woman with a brown ponytail, light mint/teal sports bra and black shorts, white sneakers. Plain white background, full body fully visible, soft flat colors, no gradients, no shadows, no text or labels, anatomically correct proportions and correct exercise form, no extra limbs or distorted joints. Show two figures side by side: the START position (left) and the END position (right), like a printable workout poster.";
@@ -239,10 +257,15 @@ export function renderProfile() {
   const p = S.DATA.person;
   const goals = S.DATA.goals;
   const lvl = p.level || "";
+  const initial = (p.name || p.slug || "?")[0].toUpperCase();
   let h = `<div class="screen-top"><div class="hi">You</div></div>`;
 
-  h += `<div class="sec">Training</div>`;
-  h += `<div class="field"><label>Training level</label>`;
+  h += `<div class="pf-header"><div class="pf-avatar">${initial}</div>`
+    + `<div class="pf-greeting">${esc(p.name || p.slug || "Your profile")}</div></div>`;
+
+  h += `<div class="pf-card">`;
+  h += `<div class="pf-card-title">Training</div>`;
+  h += `<div class="field"><label>Level</label>`;
   h += `<div class="chips" id="pf-lvl-chips">`;
   ["beginner", "intermediate", "advanced"].forEach(v => {
     h += `<div class="copt ${lvl === v ? 'on' : ''}" data-lvl="${v}">${v[0].toUpperCase() + v.slice(1)}</div>`;
@@ -250,25 +273,29 @@ export function renderProfile() {
   h += `</div>`;
   if (!lvl) h += `<div class="hint" style="color:var(--acc)">Not set — tap to pick</div>`;
   h += `</div>`;
-
   h += `<div class="field"><label>Equipment &amp; weights</label>
     <textarea class="inp" id="pf-equip" rows="2" placeholder="e.g. dumbbells 5/7.5/10kg, resistance bands, Bosu">${esc(p.equipment)}</textarea></div>`;
   h += `<div class="field"><label>Sports &amp; activities</label>
     <textarea class="inp" id="pf-sports" rows="2" placeholder="e.g. badminton, tennis, running">${esc(p.sports)}</textarea></div>`;
   h += `<div class="field"><label>Injuries / things to work around</label>
     <textarea class="inp" id="pf-con" rows="2" placeholder="e.g. gastritis, sensitive left knee">${esc(p.constraints)}</textarea></div>`;
+  h += `</div>`;
 
-  h += `<div class="sec">Goals</div>`;
+  h += `<div class="pf-card">`;
+  h += `<div class="pf-card-title">Goals</div>`;
   const goalsHtml = goals.map(g =>
     `<div class="itemed"><input class="inp goaltxt" data-id="${g.id}" value="${esc(g.text)}"><button class="xbtn" data-rmgoal="${g.id}">✕</button></div>`).join("");
   if (goals.length === 0) h += `<div class="hint">No goals yet — add one so the coach knows what to aim for.</div>`;
   h += `<div id="pf-goals">${goalsHtml}</div>`;
   h += `<button class="linkbtn" id="pf-addgoal">+ Add goal</button>`;
+  h += `</div>`;
 
-  h += `<div class="sec">App</div>`;
+  h += `<div class="pf-card">`;
+  h += `<div class="pf-card-title">App</div>`;
   h += `<div class="pf-row" id="remRow"><span>Reminders</span><span class="pf-val">${(remOn() && anyNotify()) ? "On" : "Off"}</span><span class="rchev">›</span></div>`;
   const tz = p.timezone || "Not detected";
   h += `<div class="pf-row"><span>Timezone</span><span class="pf-val">${esc(tz)}</span></div>`;
+  h += `</div>`;
 
   const needsDemo = [];
   const slugsSeen = new Set();
@@ -281,15 +308,17 @@ export function renderProfile() {
     });
   });
   if (needsDemo.length) {
-    h += `<div class="sec">Needs a demo · ${needsDemo.length}</div>`;
+    h += `<div class="pf-card">`;
+    h += `<div class="pf-card-title">Needs a demo · ${needsDemo.length}</div>`;
     needsDemo.forEach(e => {
       h += `<div class="demo-q-row"><div class="demo-q-name">${esc(e.name)}</div>`
         + `<div class="demo-q-cue">${esc(e.cue || "No cue yet")}</div>`
         + `<button class="btn ghost" data-copyprompt="${e.id}">Copy prompt</button></div>`;
     });
+    h += `</div>`;
   }
 
-  h += `<div class="edbtns"><button class="btn primary" id="pf-save">Save</button></div>`;
+  h += `<div class="edbtns" style="margin-top:20px"><button class="btn primary" id="pf-save">Save</button></div>`;
   h += `<div class="foot">Your profile helps the coach give better advice.</div>`;
   document.getElementById("wrap").innerHTML = h;
   wireProfile();
@@ -334,6 +363,16 @@ export function renderPlan() {
 
   let h = dayStripHtml();
 
+  let onboarded = false;
+  try { onboarded = localStorage.getItem("dp_onboarded") === "1"; } catch(e) {}
+  if (!onboarded) {
+    h += `<div class="welcome-card" id="welcomeCard">`
+      + `<div class="welcome-title">Welcome to Daily Plan</div>`
+      + `<div class="welcome-text">Your day, organized into blocks you can check off as you go.</div>`
+      + `<div class="welcome-text"><strong>Today</strong> — your schedule. <strong>Train</strong> — your workout routines. <strong>You</strong> — your profile and goals.</div>`
+      + `<button class="btn primary" id="welcomeDismiss" style="margin-top:12px">Got it</button></div>`;
+  }
+
   if (isToday) {
     const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
     h += `<div class="today-hdr"><div><div class="today-eyebrow">${dateStr}</div><div class="today-h1">Your day</div></div>`
@@ -355,7 +394,7 @@ export function renderPlan() {
     if (S.showPast) {
       past.forEach(b => {
         if (S.editId === b.id) { h += blockEditor(b); return; }
-        h += blockRow(b);
+        h += blockRow(b, true);
       });
     }
   }
@@ -372,8 +411,15 @@ export function renderPlan() {
 
   future.forEach(b => {
     if (S.editId === b.id) { h += blockEditor(b); return; }
-    h += blockRow(b);
+    h += blockRow(b, false);
   });
+
+  if (past.length === 0 && !current && future.length === 0 && S.editId === null) {
+    h += `<div class="plan-empty">`
+      + `<div class="plan-empty-icon"><svg viewBox="0 0 24 24" width="32" height="32"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="var(--acc)" stroke-width="1.8" fill="none"/><line x1="16" y1="2" x2="16" y2="6" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="var(--acc)" stroke-width="1.8" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="var(--acc)" stroke-width="1.8"/></svg></div>`
+      + `<div class="plan-empty-title">Nothing planned</div>`
+      + `<div class="plan-empty-desc">Add blocks to fill in your day — meals, work, training, whatever keeps you on track.</div></div>`;
+  }
 
   if (S.editId === "new" && S.newBlock) { h += blockEditor(S.newBlock); }
   else { h += `<button class="addblock" id="addBlock">+ Add block</button>`; }
@@ -432,4 +478,5 @@ function wire() {
   const ab = document.getElementById("addBlock"); if (ab) ab.onclick = addBlock;
   if (S.editId !== null) wireEditor();
   if (S.sheet) wireSheet();
+  const wd = document.getElementById("welcomeDismiss"); if (wd) wd.onclick = () => { try { localStorage.setItem("dp_onboarded", "1"); } catch(e) {} document.getElementById("welcomeCard").remove(); };
 }

@@ -13,6 +13,15 @@ function showError(msg) {
   el._t = setTimeout(() => el.className = "dp-toast", 4000);
 }
 
+export function showToast(msg) {
+  let el = document.getElementById("dp-toast");
+  if (!el) { el = document.createElement("div"); el.id = "dp-toast"; el.className = "dp-toast"; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.className = "dp-toast success show";
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = "dp-toast", 2500);
+}
+
 export async function save(query) {
   const res = await query;
   if (res.error) { showError(res.error.message || "Save failed"); return null; }
@@ -171,6 +180,13 @@ export async function markBlockDone(id) {
   await save(sb.from("block_done").upsert(
     { person_id: S.DATA.person.id, block_id: id, on_date: S.todayDate, done: now },
     { onConflict: "person_id,block_id,on_date" }));
+  if (now && S.viewWd === S.todayWd) {
+    const day = dayFor(S.viewWd);
+    const blocks = orderedBlocks(day);
+    if (blocks.length > 0 && blocks.every(b => S.BDONE[b.id])) {
+      showToast("All done for today ✨");
+    }
+  }
 }
 
 export async function toggleNotify(id) {

@@ -26,9 +26,9 @@ I'm continuing a project that was being run from Claude (Cowork) and is now movi
 Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.**
 
 **Decisions that are locked. Do not reopen them.**
-- **Palette:** ground `#0d0e11`, one action colour amber `#e3953b` (anything tappable, app-wide, never category-specific), done-state bronze `#a7712e` (fill only, never text). Full token block is §1 of `Redesign_Build_Order.md`. This took eight rounds and three passes on the amber alone. It's settled.
+- **Palette:** ground `#0d0e11`, one action colour amber `#F5A623` (anything tappable, app-wide, never category-specific), done-state bronze `#a7712e` (fill only, never text). Full token block is §1 of `Redesign_Build_Order.md`. This took eight rounds and three passes on the amber alone. It's settled. Amber updated from `#f2952c` → `#F5A623` during Phase 2 (more vibrant on phone screens).
 - **No colour-coding by category.** One action colour everywhere.
-- **Bottom nav:** Today · Train · Coach · You. ("Train", not "Workouts".)
+- **Bottom nav:** Today · Train · You (three tabs). Coach lives inside Train and inside the workout session view, not as its own tab. Changed from four tabs during Phase 2.
 - **Exercise demos** come from my own illustrations in `exercise_img/` — two-frame `_0`/`_1` pairs. **No external exercise library as a primary source** (licensing was never clarified, and the styles clash). Six images still need drawing; the approach for exercises nobody has drawn is §R3.1.
 - **App icon:** the "timeline" mark, files cut in `app_icon/`.
 
@@ -48,13 +48,25 @@ Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.
 
 **Redesign R1–R7 — done.** All seven stages built and committed locally (commits `6237ba6` through `301f5ef`). Coach edge function redeployed as v4 with conversation history and session data. `coach_message` table created. Service worker cache bumped to `dp-v3`.
 
+**Phase 2 UX Redesign — done (2026-09-02).** See `docs/UX_Redesign_Phase2.md` for full details. Summary of what shipped:
+- Coach tab removed, merged into Train (4 tabs → 3: Today · Train · You)
+- Train screen redesigned: title + `+` button, coach nudge card, clean routine cards with descriptive names
+- Coach accessible from Train and workout screens via nudge cards, with back button navigation
+- Amber updated from `#f2952c` → `#F5A623`
+- Wave 1–2 UX fixes: tap feedback on all interactive elements, checkbox contrast, tab icon size, day pill size, completed block visual distinction
+
 **What remains:**
-1. **Push 7 local commits to GitHub** and trigger a Render deploy. Auto-deploy is still broken.
+1. **Push local commits to GitHub** and trigger a Render deploy. Auto-deploy is still broken.
 2. **Push the shell files** from `Health/app_shell_update/` to `github.com/diys8/daily-plan-app-f2`. Needs Diyanah's GitHub credentials.
 3. **Backups (F7).** Still the top-priority safety item. No export, no restore ever performed.
-4. **R0 security items still open.** F1 proper — 7 `anon` DELETE policies remain, browser talks to PostgREST directly. The private-link model protects nothing. These wait for Migration B (real auth).
-5. **Supabase cleanup.** Delete inert `app` and `publish` edge functions from the dashboard (two clicks, non-urgent).
-6. **Migration B** — real accounts, Supabase Auth, per-user data. Not started; waits until Diyanah decides friends-or-product.
+4. **Phase 2 remaining UX fixes.** Tracked in `docs/UX_Redesign_Phase2.md` status checklist:
+   - Wave 1: empty states (other screens), "Now" card clarity, onboarding
+   - Wave 2: grip handles, transitions, coach input, save confirmation
+   - Wave 3: profile redesign, spacing/rhythm, exercise card visuals, celebrations, polish
+5. **Workout Guide library integration.** MIT-licensed SVG exercise demos, 83% coverage. Research done, not yet integrated.
+6. **R0 security items still open.** F1 proper — 7 `anon` DELETE policies remain, browser talks to PostgREST directly. The private-link model protects nothing. These wait for Migration B (real auth).
+7. **Supabase cleanup.** Delete inert `app` and `publish` edge functions from the dashboard (two clicks, non-urgent).
+8. **Migration B** — real accounts, Supabase Auth, per-user data. Not started; waits until Diyanah decides friends-or-product.
 
 **Reference (phone-readable versions of the same material):**
 - Redesign, 11 screens — https://claude.ai/code/artifact/becf8c2d-1715-479d-b01d-3b0b12057210
@@ -63,9 +75,10 @@ Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.
 - Build order — https://claude.ai/code/artifact/4f8cc43b-7e51-4e8f-88c4-dd9ca87f292c
 - Migration plan — https://claude.ai/code/artifact/5346b06d-2dcc-49ef-88bd-bd80f78251d0
 - Status board — https://claude.ai/code/artifact/85234f5a-5ec3-46aa-8cf6-09773ad9c0db
+- UX assessment — https://claude.ai/code/artifact/d1f4c043-0556-4331-9f09-81ae6565f22e
 
 **How to work with me.** I'm not technical. Summarise what you're going to do in plain language before you do it, and wait for my go-ahead. Don't show me code unless I ask. Keep it short. If something needs my hands — a credential, a push, a tap on the phone — say so as numbered steps.
 
 ~~**Start with A1: confirm push access to `github.com/diys8/daily-plan-app`, then tell me what you found and what A2 will look like.** Don't clean anything up in the first commit — commit exactly what's running today, so we can tell later whether a change broke something.~~
 
-**Migration A and Redesign R1–R7 are done (2026-08-28).** 10 local commits, 7 not yet pushed. Read the **Status** section of `Migration_Plan.md` for the full table. Next priorities: push + deploy, backups (F7), then decide on Migration B.
+**Migration A, Redesign R1–R7, and Phase 2 UX redesign are done (2026-09-02).** Local commits not yet pushed. Read the **Status** section of `Migration_Plan.md` for the full table and `docs/UX_Redesign_Phase2.md` for Phase 2 progress. Next priorities: push + deploy, remaining Wave 1–3 UX fixes, backups (F7), then decide on Migration B.

@@ -1,6 +1,6 @@
 import { S, SUPA_URL, SUPA_KEY } from "./state.js";
 import { esc, slugify } from "./util.js";
-import { sb, save, load } from "./db.js";
+import { sb, save, load, showToast } from "./db.js";
 
 const QUICK = [
   { label: "Review my week", msg: "Review my recent training and propose next week's progression. Keep it to a few focused, safe changes (max 5)." },
@@ -10,7 +10,7 @@ const QUICK = [
 ];
 
 export function renderCoach() {
-  let h = `<div class="screen-top"><div class="hi">Coach</div></div>`;
+  let h = `<div class="screen-top"><button class="backb" id="coachBack">‹</button><div class="hi">Coach</div></div>`;
 
   if (S.coachMessages.length === 0 && !S.coachBusy) {
     h += `<div class="coach-empty">Ask for advice, or get a weekly review. Nothing changes until you approve.</div>`;
@@ -69,6 +69,11 @@ function propLabel(op) {
 }
 
 function wireCoach() {
+  document.getElementById("coachBack").onclick = () => {
+    if (S.coachFrom === "workout") { S.view = "workout"; }
+    else { S.view = "hub"; }
+    S.render();
+  };
   const ta = document.getElementById("coach-input");
   if (ta) {
     ta.oninput = () => { S.coachDraft = ta.value; autoGrow(ta); };
@@ -184,6 +189,7 @@ async function applyProposal() {
   }
   await load();
   S.coachApplied = true;
+  showToast("Changes applied ✓");
   S.coachProposal = null;
   S.render();
 }
