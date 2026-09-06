@@ -42,31 +42,35 @@ Order: **A → R0 (finish it) → R1–R7 → I decide friends-or-product → B.
 - One data fix: Thursday had two 09:00 Breakfast blocks both notifying; `block id=38` set `notify=false`.
 - **It was verified statically, not live** — neither machine could reach the running app. Assume it works; confirm on the phone.
 
-**What's still open, roughly in order** _(updated 2026-08-28, end of redesign session)_**:**
+**What's still open, roughly in order** _(updated 2026-09-05)_**:**
 
 **Migration A — done.** A0, A3, A4, A7 all complete. Code split into seven ES modules, Vitest running (34 tests), Render publish dir set to `public/`.
 
 **Redesign R1–R7 — done.** All seven stages built and committed locally (commits `6237ba6` through `301f5ef`). Coach edge function redeployed as v4 with conversation history and session data. `coach_message` table created. Service worker cache bumped to `dp-v3`.
 
-**Phase 2 UX Redesign — done (2026-09-02).** See `docs/UX_Redesign_Phase2.md` for full details. Summary of what shipped:
+**Phase 2 UX Redesign — done (2026-09-02).** See `docs/UX_Redesign_Phase2.md` for full details. All 18 Wave 1–3 findings implemented. Summary of what shipped:
 - Coach tab removed, merged into Train (4 tabs → 3: Today · Train · You)
 - Train screen redesigned: title + `+` button, coach nudge card, clean routine cards with descriptive names
 - Coach accessible from Train and workout screens via nudge cards, with back button navigation
 - Amber updated from `#f2952c` → `#F5A623`
-- Wave 1–2 UX fixes: tap feedback on all interactive elements, checkbox contrast, tab icon size, day pill size, completed block visual distinction
+- Wave 1–3 UX fixes: tap feedback, checkbox contrast, tab/day pill sizing, empty states, onboarding, grip handles, transitions, coach input, save confirmations, profile sections, spacing, exercise cards, celebrations
+
+**Phase 3 + UX polish — done (2026-09-05).** See `docs/Phase3_Plan.md`. Summary:
+- Dim past blocks, progress ring, block icons, workout→Train navigation (findings 1–4)
+- Count label clarity with checkbox/barbell icons (finding 5)
+- Profile split into read-only + edit mode (finding 6)
+- Day title simplification for non-today days (finding 7)
+- Demo queue moved from You to Train tab
+- Routine card labels: "Not started" / "N days ago" (friendlier wording)
+- Demo queue cards: amber left border, rounded corners, consistent styling
+- Profile edit: App card (Reminders, Timezone) fixed
 
 **What remains:**
-1. **Push local commits to GitHub** and trigger a Render deploy. Auto-deploy is still broken.
-2. **Push the shell files** from `Health/app_shell_update/` to `github.com/diys8/daily-plan-app-f2`. Needs Diyanah's GitHub credentials.
-3. **Backups (F7).** Still the top-priority safety item. No export, no restore ever performed.
-4. **Phase 2 remaining UX fixes.** Tracked in `docs/UX_Redesign_Phase2.md` status checklist:
-   - Wave 1: empty states (other screens), "Now" card clarity, onboarding
-   - Wave 2: grip handles, transitions, coach input, save confirmation
-   - Wave 3: profile redesign, spacing/rhythm, exercise card visuals, celebrations, polish
-5. **Workout Guide library integration.** MIT-licensed SVG exercise demos, 83% coverage. Research done, not yet integrated.
-6. **R0 security items still open.** F1 proper — 7 `anon` DELETE policies remain, browser talks to PostgREST directly. The private-link model protects nothing. These wait for Migration B (real auth).
-7. **Supabase cleanup.** Delete inert `app` and `publish` edge functions from the dashboard (two clicks, non-urgent).
-8. **Migration B** — real accounts, Supabase Auth, per-user data. Not started; waits until Diyanah decides friends-or-product.
+1. **Backups (F7).** Still the top-priority safety item. No export, no restore ever performed.
+2. **Workout Guide library integration.** MIT-licensed SVG exercise demos, 83% coverage. Research done, not yet integrated. Deferred by Diyanah.
+3. **R0 security items still open.** F1 proper — 7 `anon` DELETE policies remain, browser talks to PostgREST directly. The private-link model protects nothing. These wait for Migration B (real auth).
+4. **Supabase cleanup.** Delete inert `app` and `publish` edge functions from the dashboard (two clicks, non-urgent).
+5. **Migration B** — real accounts, Supabase Auth, per-user data. Not started; waits until Diyanah decides friends-or-product.
 
 **Reference (phone-readable versions of the same material):**
 - Redesign, 11 screens — https://claude.ai/code/artifact/becf8c2d-1715-479d-b01d-3b0b12057210

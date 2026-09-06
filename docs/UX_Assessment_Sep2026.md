@@ -128,12 +128,14 @@ The app has a strong foundation — the dark theme is clean, the amber accent is
 
 ---
 
-## Priority order
+## Priority order — all shipped 2026-09-05
 
-1. **Workout block → navigates to Train** (fixes the biggest UX confusion)
-2. **Progress ring** (instant visual feedback)
-3. **Block icons** (scanning by shape)
-4. **Dimmed past blocks** (visual "you are here")
-5. ~~Strikethrough on past blocks~~ (decided against — dimming only)
+1. ~~**Workout block → navigates to Train**~~ — Done (Phase 3)
+2. ~~**Progress ring**~~ — Done (Phase 3)
+3. ~~**Block icons**~~ — Done (Phase 3)
+4. ~~**Dimmed past blocks**~~ — Done (Phase 3)
+5. ~~**Ambiguous count labels**~~ — Done. Checkbox + barbell icons; workout blocks show exercise count only
+6. ~~**Profile read-only view**~~ — Done. Read-only default with "Edit profile" toggle
+7. ~~**Day title simplification**~~ — Done. Full date eyebrow + weekday heading + optional subtitle
 
-Items 6 and 7 are noted for later, not part of the immediate implementation.
+All seven findings addressed.

@@ -131,9 +131,21 @@ All four changes shipped and verified locally on 2026-09-05.
 
 ---
 
+## Additional findings — shipped 2026-09-05
+
+5. ~~**Count label clarity** (finding #5)~~ — **Done.** Checkbox and barbell icons added to counts in `blockRow()`. Workout blocks now show only the exercise count (redundant checklist count removed).
+6. ~~**Profile read-only view** (finding #6)~~ — **Done.** You tab opens in read-only mode; "Edit profile" toggles to form. `S.profileEdit` flag in state.js.
+7. ~~**Day title simplification** (finding #7)~~ — **Done.** Non-today days show full date eyebrow + weekday heading + optional subtitle from day label.
+
+## UX polish — shipped 2026-09-05
+
+- Routine cards: "Never run" → "Not started", "3d ago" → "3 days ago"
+- Demo queue moved from You tab to Train tab
+- Demo queue cards: amber left border, rounded corners, consistent spacing
+- Profile edit: App card (Reminders, Timezone) restored after read-only split
+- Reminders row clickable in both read-only and edit views
+
 ## Not in scope
 
-- Profile read-only view (finding #6) — future
-- Custom day names (finding #7) — future
-- Ambiguous count labels (finding #5) — future
-- Changes to Train, You, or workout detail screens — none needed
+- Workout Guide library integration — deferred
+- Changes to workout detail or coach screens — none needed
