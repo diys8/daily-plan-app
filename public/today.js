@@ -102,10 +102,10 @@ function blockRow(b, isPast) {
   const checked = ci.filter(c => S.CHECKS[c.id]).length;
   let meta = "";
   if (isDone) meta += '<span class="row-done-mark">✓</span>';
-  if (ci.length) meta += `${checked}/${ci.length}`;
+  if (ci.length) meta += `<svg class="meta-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>${checked}/${ci.length}`;
   if (b.workout) {
     const wm = workoutMeta(b.workout);
-    if (wm) meta += (ci.length ? " · " : "") + `${wm.done}/${wm.total}`;
+    if (wm) meta += (ci.length ? " · " : "") + `<svg class="meta-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 7v10M18 7v10M4 9v6M20 9v6M6 12h12"/></svg>${wm.done}/${wm.total}`;
   }
   if (b.workout) {
     meta += ` <span class="chev">▸</span>`;
@@ -381,7 +381,14 @@ export function renderPlan() {
     h += `<div class="today-hdr"><div><div class="today-eyebrow">${dateStr}</div><div class="today-h1">Your day</div></div>`
       + `<div class="hdr-right"><button class="btn-icon ${(remOn() && anyNotify()) ? "active" : ""}" id="remBtn" aria-label="Reminders">${BELL}</button>${ringHtml(done, total)}</div></div>`;
   } else {
-    h += `<div class="today-hdr"><div><div class="today-eyebrow">${DAYFULL[S.viewWd]}</div><div class="today-h1">${esc(day.label || day.chip || DAYFULL[S.viewWd])}</div></div></div>`;
+    const otherDate = (() => {
+      const d = new Date(); const diff = S.viewWd - d.getDay(); d.setDate(d.getDate() + diff);
+      return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+    })();
+    const dayLabel = day.label || day.chip || "";
+    h += `<div class="today-hdr"><div><div class="today-eyebrow">${otherDate}</div><div class="today-h1">${DAYFULL[S.viewWd]}</div>`;
+    if (dayLabel && dayLabel !== DAYFULL[S.viewWd]) h += `<div class="today-sub">${esc(dayLabel)}</div>`;
+    h += `</div></div>`;
   }
 
   const past = (isToday && cur >= 0) ? blocks.slice(0, cur) : [];
