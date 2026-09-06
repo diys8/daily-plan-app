@@ -332,6 +332,13 @@ function renderProfileEdit() {
   h += `<button class="linkbtn" id="pf-addgoal">+ Add goal</button>`;
   h += `</div>`;
 
+  h += `<div class="pf-card">`;
+  h += `<div class="pf-card-title">App</div>`;
+  h += `<div class="pf-row" id="remRow"><span>Reminders</span><span class="pf-val">${(remOn() && anyNotify()) ? "On" : "Off"}</span><span class="rchev">›</span></div>`;
+  const tz = p.timezone || "Not detected";
+  h += `<div class="pf-row"><span>Timezone</span><span class="pf-val">${esc(tz)}</span></div>`;
+  h += `</div>`;
+
   h += `<div class="edbtns" style="margin-top:20px"><button class="btn primary" id="pf-save">Save</button>`
     + `<button class="btn ghost" id="pf-cancel">Cancel</button></div>`;
   document.getElementById("wrap").innerHTML = h;
@@ -352,6 +359,10 @@ function wireProfileEdit() {
   document.querySelectorAll("#pf-goals .xbtn").forEach(x => x.onclick = () => x.closest(".itemed").remove());
   document.getElementById("pf-save").onclick = async () => { await onSaveProfile(); S.profileEdit = false; };
   document.getElementById("pf-cancel").onclick = () => { S.profileEdit = false; S.render(); };
+  document.getElementById("remRow").onclick = async () => {
+    if (remOn() && anyNotify()) { try { localStorage.setItem("dp_rem", "0"); } catch(e) {} S.render(); }
+    else { await enableReminders(); }
+  };
 }
 
 /* ── main render ──────────────────────────────────────── */
