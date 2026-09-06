@@ -52,12 +52,12 @@ export function renderHub() {
       const wds = daysForRoutine(w.code);
       const days = wds.length ? wds.map(d => DAYNAMES[d]).join(", ") : "Not scheduled";
       const last = S.RECENT_SESSIONS[w.id];
-      let lastStr = "Never run";
+      let lastStr = "Not started";
       if (last) {
         const ago = daysBetween(last.on_date, S.todayDate);
         if (ago === 0) lastStr = "Today";
         else if (ago === 1) lastStr = "Yesterday";
-        else lastStr = ago + "d ago";
+        else lastStr = ago + " days ago";
       }
       h += `<div class="rcard" data-routine="${w.code}"><div class="rn">${esc(displayName(w))}</div>`
         + `<div class="rm">${esc(days)} · ${w.exercise.length} exercises · ${esc(lastStr)}</div>`
@@ -76,7 +76,7 @@ export function renderHub() {
     });
   });
   if (needsDemo.length) {
-    h += `<div class="sec">Needs a demo · ${needsDemo.length}</div>`;
+    h += `<div class="sec" style="margin-bottom:16px">Needs demo · ${needsDemo.length}</div>`;
     needsDemo.forEach(e => {
       h += `<div class="demo-q-row"><div class="demo-q-name">${esc(e.name)}</div>`
         + `<div class="demo-q-cue">${esc(e.cue || "No cue yet")}</div>`

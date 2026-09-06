@@ -102,10 +102,10 @@ function blockRow(b, isPast) {
   const checked = ci.filter(c => S.CHECKS[c.id]).length;
   let meta = "";
   if (isDone) meta += '<span class="row-done-mark">✓</span>';
-  if (ci.length) meta += `<svg class="meta-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>${checked}/${ci.length}`;
+  if (ci.length && !b.workout) meta += `<svg class="meta-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>${checked}/${ci.length}`;
   if (b.workout) {
     const wm = workoutMeta(b.workout);
-    if (wm) meta += (ci.length ? " · " : "") + `<svg class="meta-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 7v10M18 7v10M4 9v6M20 9v6M6 12h12"/></svg>${wm.done}/${wm.total}`;
+    if (wm) meta += `<svg class="meta-icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 7v10M18 7v10M4 9v6M20 9v6M6 12h12"/></svg>${wm.done}/${wm.total}`;
   }
   if (b.workout) {
     meta += ` <span class="chev">▸</span>`;

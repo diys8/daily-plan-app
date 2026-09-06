@@ -314,10 +314,11 @@ input,textarea,select{font-family:inherit}
 .exrow.dragging{opacity:.7;background:var(--surf);border-radius:8px}
 
 /* needs demo queue */
-.demo-q-row{background:var(--surf);border:1px solid var(--line);border-radius:10px;
-  padding:11px 12px;margin-bottom:7px}
-.demo-q-name{font-size:14px;font-weight:600}
+.demo-q-row{background:var(--surf);border:1px solid var(--line);border-left:3px solid var(--acc);
+  border-radius:14px;padding:14px 16px;margin-bottom:7px}
+.demo-q-name{font-size:15px;font-weight:600;color:var(--ink)}
 .demo-q-cue{font-size:13px;color:var(--mut);margin:4px 0 8px;line-height:1.4}
+.demo-q-row .btn{margin-top:8px}
 
 /* profile (R7) */
 .pf-row{display:flex;align-items:center;gap:10px;padding:14px 2px;border-bottom:1px solid var(--line2);cursor:pointer;font-size:14px}
