@@ -328,6 +328,12 @@ input,textarea,select{font-family:inherit}
   padding:16px;margin-bottom:14px}
 .pf-card-title{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
   color:var(--dim);margin-bottom:12px}
+.pf-item{padding:10px 0;border-bottom:1px solid var(--line2)}
+.pf-item:last-child{border-bottom:none}
+.pf-label{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.pf-text{font-size:14px;color:var(--ink);line-height:1.5}
+.pf-goal{padding:8px 0;border-bottom:1px solid var(--line2);font-size:14px;color:var(--ink)}
+.pf-goal:last-child{border-bottom:none}
 
 /* coach thread (R6) */
 .coach-empty{color:var(--mut);font-size:14px;line-height:1.6;margin:0 2px 16px}

@@ -8,6 +8,8 @@ import {
 
 function shortName(w) { const n = w.name || ("Routine " + w.code); return n.split("—")[0].split("-")[0].trim() || n; }
 function displayName(w) { const n = w.name || ("Routine " + w.code); const i = n.indexOf("—"); if (i > 0) { const after = n.slice(i + 1).trim(); if (after) return after.charAt(0).toUpperCase() + after.slice(1); } return n; }
+
+const DEMO_STYLE = "Flat vector illustration, clean minimalist fitness-guide style. A young woman with a brown ponytail, light mint/teal sports bra and black shorts, white sneakers. Plain white background, full body fully visible, soft flat colors, no gradients, no shadows, no text or labels, anatomically correct proportions and correct exercise form, no extra limbs or distorted joints. Show two figures side by side: the START position (left) and the END position (right), like a printable workout poster.";
 function daysForRoutine(code) { return S.DATA.days.filter(d => d.block.some(b => b.workout === code)).map(d => d.weekday).sort((a, b) => a - b); }
 function firstWorkoutBlock(code) { for (const d of S.DATA.days) { const b = d.block.find(x => x.workout === code); if (b) return b; } return null; }
 
@@ -63,12 +65,39 @@ export function renderHub() {
     });
   }
 
+  const needsDemo = [];
+  const slugsSeen = new Set();
+  S.DATA.workouts.forEach(w => {
+    w.exercise.forEach(e => {
+      const slug = e.demo_slug;
+      if (!slug || slugsSeen.has(slug)) return;
+      slugsSeen.add(slug);
+      if (demoMode(slug) === "none") needsDemo.push(e);
+    });
+  });
+  if (needsDemo.length) {
+    h += `<div class="sec">Needs a demo · ${needsDemo.length}</div>`;
+    needsDemo.forEach(e => {
+      h += `<div class="demo-q-row"><div class="demo-q-name">${esc(e.name)}</div>`
+        + `<div class="demo-q-cue">${esc(e.cue || "No cue yet")}</div>`
+        + `<button class="btn ghost" data-copyprompt="${e.id}">Copy prompt</button></div>`;
+    });
+  }
+
   document.getElementById("wrap").innerHTML = h;
   const nb = document.getElementById("newRoutine");
   const nb2 = document.getElementById("newRoutineEmpty");
   if (nb) nb.onclick = newRoutine;
   if (nb2) nb2.onclick = newRoutine;
   document.querySelectorAll("[data-routine]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.routine; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
+  document.querySelectorAll("[data-copyprompt]").forEach(el => el.onclick = () => {
+    const exId = +el.dataset.copyprompt;
+    let ex;
+    for (const w of S.DATA.workouts) { ex = w.exercise.find(e => e.id === exId); if (ex) break; }
+    if (!ex) return;
+    const prompt = DEMO_STYLE + "\n\nExercise: " + ex.name + ".\n" + (ex.cue || "");
+    navigator.clipboard.writeText(prompt).then(() => { el.textContent = "Copied ✓"; setTimeout(() => { el.textContent = "Copy prompt"; }, 1500); });
+  });
   wireCoachCard("hub");
 }
 

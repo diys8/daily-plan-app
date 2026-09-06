@@ -5,7 +5,7 @@ import {
   toggleItem, markBlockDone,
   toggleNotify, enableReminders, allReminders, remOn, anyNotify,
   applyScope, reloadAndRender, sb, save, deleteBlockCascade,
-  demoMode, showToast
+  showToast
 } from "./db.js";
 
 /* ── helpers ──────────────────────────────────────────── */
@@ -251,9 +251,51 @@ async function onSaveProfile() {
   showToast("Saved ✓");
 }
 
-const DEMO_STYLE = "Flat vector illustration, clean minimalist fitness-guide style. A young woman with a brown ponytail, light mint/teal sports bra and black shorts, white sneakers. Plain white background, full body fully visible, soft flat colors, no gradients, no shadows, no text or labels, anatomically correct proportions and correct exercise form, no extra limbs or distorted joints. Show two figures side by side: the START position (left) and the END position (right), like a printable workout poster.";
-
 export function renderProfile() {
+  if (S.profileEdit) { renderProfileEdit(); return; }
+  const p = S.DATA.person;
+  const goals = S.DATA.goals;
+  const initial = (p.name || p.slug || "?")[0].toUpperCase();
+  let h = `<div class="screen-top"><div class="hi">You</div></div>`;
+
+  h += `<div class="pf-header"><div class="pf-avatar">${initial}</div>`
+    + `<div class="pf-greeting">${esc(p.name || p.slug || "Your profile")}</div></div>`;
+
+  h += `<div class="pf-card">`;
+  h += `<div class="pf-card-title">Training</div>`;
+  h += `<div class="pf-item"><span class="pf-label">Level</span><span class="pf-text">${p.level ? p.level[0].toUpperCase() + p.level.slice(1) : "Not set"}</span></div>`;
+  h += `<div class="pf-item"><span class="pf-label">Equipment</span><span class="pf-text">${esc(p.equipment) || "None listed"}</span></div>`;
+  h += `<div class="pf-item"><span class="pf-label">Sports</span><span class="pf-text">${esc(p.sports) || "None listed"}</span></div>`;
+  h += `<div class="pf-item"><span class="pf-label">Injuries</span><span class="pf-text">${esc(p.constraints) || "None"}</span></div>`;
+  h += `</div>`;
+
+  h += `<div class="pf-card">`;
+  h += `<div class="pf-card-title">Goals</div>`;
+  if (goals.length === 0) {
+    h += `<div class="hint">No goals yet.</div>`;
+  } else {
+    goals.forEach(g => { h += `<div class="pf-goal">${esc(g.text)}</div>`; });
+  }
+  h += `</div>`;
+
+  h += `<div class="pf-card">`;
+  h += `<div class="pf-card-title">App</div>`;
+  h += `<div class="pf-row" id="remRow"><span>Reminders</span><span class="pf-val">${(remOn() && anyNotify()) ? "On" : "Off"}</span><span class="rchev">›</span></div>`;
+  const tz = p.timezone || "Not detected";
+  h += `<div class="pf-row"><span>Timezone</span><span class="pf-val">${esc(tz)}</span></div>`;
+  h += `</div>`;
+
+  h += `<div class="edbtns" style="margin-top:20px"><button class="btn primary" id="pf-edit">Edit profile</button></div>`;
+  h += `<div class="foot">Your profile helps the coach give better advice.</div>`;
+  document.getElementById("wrap").innerHTML = h;
+  document.getElementById("pf-edit").onclick = () => { S.profileEdit = true; S.render(); };
+  document.getElementById("remRow").onclick = async () => {
+    if (remOn() && anyNotify()) { try { localStorage.setItem("dp_rem", "0"); } catch(e) {} S.render(); }
+    else { await enableReminders(); }
+  };
+}
+
+function renderProfileEdit() {
   const p = S.DATA.person;
   const goals = S.DATA.goals;
   const lvl = p.level || "";
@@ -290,41 +332,13 @@ export function renderProfile() {
   h += `<button class="linkbtn" id="pf-addgoal">+ Add goal</button>`;
   h += `</div>`;
 
-  h += `<div class="pf-card">`;
-  h += `<div class="pf-card-title">App</div>`;
-  h += `<div class="pf-row" id="remRow"><span>Reminders</span><span class="pf-val">${(remOn() && anyNotify()) ? "On" : "Off"}</span><span class="rchev">›</span></div>`;
-  const tz = p.timezone || "Not detected";
-  h += `<div class="pf-row"><span>Timezone</span><span class="pf-val">${esc(tz)}</span></div>`;
-  h += `</div>`;
-
-  const needsDemo = [];
-  const slugsSeen = new Set();
-  S.DATA.workouts.forEach(w => {
-    w.exercise.forEach(e => {
-      const slug = e.demo_slug;
-      if (!slug || slugsSeen.has(slug)) return;
-      slugsSeen.add(slug);
-      if (demoMode(slug) === "none") needsDemo.push(e);
-    });
-  });
-  if (needsDemo.length) {
-    h += `<div class="pf-card">`;
-    h += `<div class="pf-card-title">Needs a demo · ${needsDemo.length}</div>`;
-    needsDemo.forEach(e => {
-      h += `<div class="demo-q-row"><div class="demo-q-name">${esc(e.name)}</div>`
-        + `<div class="demo-q-cue">${esc(e.cue || "No cue yet")}</div>`
-        + `<button class="btn ghost" data-copyprompt="${e.id}">Copy prompt</button></div>`;
-    });
-    h += `</div>`;
-  }
-
-  h += `<div class="edbtns" style="margin-top:20px"><button class="btn primary" id="pf-save">Save</button></div>`;
-  h += `<div class="foot">Your profile helps the coach give better advice.</div>`;
+  h += `<div class="edbtns" style="margin-top:20px"><button class="btn primary" id="pf-save">Save</button>`
+    + `<button class="btn ghost" id="pf-cancel">Cancel</button></div>`;
   document.getElementById("wrap").innerHTML = h;
-  wireProfile();
+  wireProfileEdit();
 }
 
-function wireProfile() {
+function wireProfileEdit() {
   document.querySelectorAll("[data-lvl]").forEach(el => el.onclick = () => {
     document.querySelectorAll("[data-lvl]").forEach(c => c.classList.remove("on"));
     el.classList.add("on");
@@ -336,19 +350,8 @@ function wireProfile() {
     d.querySelector(".xbtn").onclick = () => d.remove(); box.appendChild(d); d.querySelector("input").focus();
   };
   document.querySelectorAll("#pf-goals .xbtn").forEach(x => x.onclick = () => x.closest(".itemed").remove());
-  document.getElementById("pf-save").onclick = onSaveProfile;
-  document.getElementById("remRow").onclick = async () => {
-    if (remOn() && anyNotify()) { try { localStorage.setItem("dp_rem", "0"); } catch(e) {} S.render(); }
-    else { await enableReminders(); }
-  };
-  document.querySelectorAll("[data-copyprompt]").forEach(el => el.onclick = () => {
-    const exId = +el.dataset.copyprompt;
-    let ex;
-    for (const w of S.DATA.workouts) { ex = w.exercise.find(e => e.id === exId); if (ex) break; }
-    if (!ex) return;
-    const prompt = DEMO_STYLE + "\n\nExercise: " + ex.name + ".\n" + (ex.cue || "");
-    navigator.clipboard.writeText(prompt).then(() => { el.textContent = "Copied ✓"; setTimeout(() => { el.textContent = "Copy prompt"; }, 1500); });
-  });
+  document.getElementById("pf-save").onclick = async () => { await onSaveProfile(); S.profileEdit = false; };
+  document.getElementById("pf-cancel").onclick = () => { S.profileEdit = false; S.render(); };
 }
 
 /* ── main render ──────────────────────────────────────── */

@@ -36,5 +36,6 @@ export const S = {
   coachApplied: false,
   SLUG: null,
   showPast: false,
+  profileEdit: false,
   render: () => {},
 };
