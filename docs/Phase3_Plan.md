@@ -145,7 +145,26 @@ All four changes shipped and verified locally on 2026-09-05.
 - Profile edit: App card (Reminders, Timezone) restored after read-only split
 - Reminders row clickable in both read-only and edit views
 
-## Not in scope
+## Phase 4 — Ad-hoc workouts + session redesign (planned 2026-09-10)
+
+### Step 1 (building now)
+- **Ad-hoc entry**: Start button on routine cards in Train hub. Opens workout session without needing a scheduled block.
+- **Focus mode**: One exercise fills the screen — demo image, set/rep/weight grid, instructions, feel chips, Mark done. Default view.
+- **List mode**: All exercises in a scrollable list grouped by section. Tap any exercise to jump to it in focus mode.
+- **Tab toggle**: Switch between "Exercise" (focus) and "All exercises" (list) tabs.
+- **Back navigation**: Goes to Train hub for ad-hoc sessions, Today for scheduled sessions.
+- No database changes needed — session and exercise logs are already stored by routine + date, not by block.
+
+### Deferred
+- **Circuit mode**: Round-based ordering (1 set of each exercise per round, then loop). Needs set-level tracking in the database.
+- **Coach-generated workout cards**: Structured plan proposals in the coach chat (inspired by Whoop Strength Trainer), with accept/adjust action buttons.
+- **Whoop recovery integration**: Pull recovery/HRV data via Whoop API to inform daily planning. Needs a Supabase edge function for OAuth.
+- **Garmin workout push**: Send structured workouts to Garmin watch via Training API (Garmin has paused new developer applications).
+
+### Design reference
+- Whoop screenshots saved in the Health folder (Sep 2026): focus-mode session screen, AI coach workout card.
+
+## Not in scope (from Phase 3)
 
 - Workout Guide library integration — deferred
 - Changes to workout detail or coach screens — none needed

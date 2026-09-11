@@ -229,19 +229,34 @@ input,textarea,select{font-family:inherit}
   border:1px solid var(--line);border-radius:6px;padding:2px 8px;margin-bottom:8px}
 .coachbox{background:var(--surf);border:1px solid var(--line);border-radius:13px;padding:12px 13px;margin-top:12px}
 
+/* start button on routine cards */
+.rcard-start{display:inline-block;margin-top:8px;font-size:13px;font-weight:600;
+  color:var(--onacc);background:var(--acc);border:none;border-radius:9px;
+  padding:7px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.rcard-start:active{opacity:.7}
+
 /* workout session view */
 .wk-name{flex:1;font-weight:700;font-size:16px;color:var(--ink)}
 .wk-progress{display:flex;gap:2px;margin:12px 0 6px}
 .wk-seg{flex:1;height:4px;background:var(--line);border-radius:2px}
 .wk-seg.done{background:var(--done)}
 .wk-count{font-size:13px;color:var(--dim);margin-bottom:12px}
+
+/* tab toggle */
+.wk-tabs{display:flex;gap:2px;background:var(--surf);border:1px solid var(--line);
+  border-radius:11px;padding:3px;margin-bottom:16px}
+.wk-tab{flex:1;font-size:13px;font-weight:600;color:var(--dim);background:none;
+  border:none;border-radius:9px;padding:8px;cursor:pointer;transition:.15s;
+  -webkit-tap-highlight-color:transparent}
+.wk-tab.active{color:var(--ink);background:var(--raise)}
+.wk-tab:active{opacity:.7}
+
 .wk-sec-hdr{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   color:var(--dim);margin:18px 2px 6px;display:flex;justify-content:space-between}
 .wk-sec-count{font-weight:400}
 .wk-row{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 2px;
   border-bottom:1px solid var(--line2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .1s}
 .wk-row:active{background:var(--surf)}
-.wk-row.done{opacity:.5}
 .wk-dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--line);flex-shrink:0}
 .wk-dot.done{background:var(--done);border-color:var(--done)}
 .wk-num{width:24px;height:24px;border-radius:8px;border:1.5px solid var(--line);
@@ -366,3 +381,20 @@ input,textarea,select{font-family:inherit}
   max-width:90vw;text-align:center}
 .dp-toast.show{opacity:1;pointer-events:auto}
 .dp-toast.success{background:#1a1d22;border:1px solid var(--line)}
+
+/* focus mode */
+.focus-card{margin-top:4px}
+.focus-name{font-size:20px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.focus-grid{display:flex;gap:8px;margin-bottom:14px}
+.focus-grid-col{flex:1;background:var(--surf);border:1px solid var(--line);border-radius:12px;
+  padding:14px 10px;text-align:center}
+.focus-grid-val{font-size:22px;font-weight:700;color:var(--ink)}
+.focus-grid-lbl{font-size:11px;color:var(--dim);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.focus-scheme{font-size:15px;font-weight:600;color:var(--acc);background:rgba(245,166,35,.12);
+  padding:10px 14px;border-radius:10px;margin-bottom:14px;text-align:center}
+.focus-extra{font-size:13px;color:var(--dim);text-align:center;margin:-8px 0 14px}
+.focus-cue{font-size:14px;color:var(--mut);line-height:1.5;margin-bottom:12px;
+  padding:12px 14px;background:var(--surf);border:1px solid var(--line);border-radius:12px}
+.focus-done{width:100%;margin-top:4px}
+.focus-nav{display:flex;justify-content:space-between;margin-top:16px;gap:8px}
+.focus-nav .btn{font-size:12px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

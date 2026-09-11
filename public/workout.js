@@ -34,6 +34,27 @@ function wireCoachCard(from) {
   });
 }
 
+/* ── focus mode helpers ─────────────────────────────────── */
+
+let listMode = false;
+
+function schemeGrid(scheme) {
+  const m = scheme.match(/(\d+)\s*[×x]\s*(\d+(?:\s*[-–]\s*\d+)?)/i);
+  if (!m) return `<div class="focus-scheme">${esc(scheme)}</div>`;
+  const sets = m[1], reps = m[2].replace(/\s/g, "");
+  let g = `<div class="focus-grid">`
+    + `<div class="focus-grid-col"><div class="focus-grid-val">${esc(sets)}</div><div class="focus-grid-lbl">Sets</div></div>`
+    + `<div class="focus-grid-col"><div class="focus-grid-val">${esc(reps)}</div><div class="focus-grid-lbl">Reps</div></div>`;
+  const wm = scheme.match(/@\s*([\d.]+\s*(?:kg|lb|lbs)?)/i);
+  if (wm) g += `<div class="focus-grid-col"><div class="focus-grid-val">${esc(wm[1].trim())}</div><div class="focus-grid-lbl">Weight</div></div>`;
+  g += `</div>`;
+  const extra = scheme.replace(m[0], "").replace(/@\s*[\d.]+\s*(?:kg|lb|lbs)?/i, "").replace(/^\s*[,/·\-–—]\s*/, "").trim();
+  if (extra) g += `<div class="focus-extra">${esc(extra)}</div>`;
+  return g;
+}
+
+/* ── train hub ──────────────────────────────────────────── */
+
 export function renderHub() {
   let h = `<div class="screen-top"><div class="hi">Train</div>`
     + `<button class="btn-icon" id="newRoutine" style="font-size:24px;color:var(--acc)">+</button></div>`;
@@ -61,6 +82,7 @@ export function renderHub() {
       }
       h += `<div class="rcard" data-routine="${w.code}"><div class="rn">${esc(displayName(w))}</div>`
         + `<div class="rm">${esc(days)} · ${w.exercise.length} exercises · ${esc(lastStr)}</div>`
+        + (w.exercise.length > 0 ? `<button class="rcard-start" data-startw="${w.code}">Start</button>` : "")
         + `<span class="rchev">›</span></div>`;
     });
   }
@@ -90,6 +112,10 @@ export function renderHub() {
   if (nb) nb.onclick = newRoutine;
   if (nb2) nb2.onclick = newRoutine;
   document.querySelectorAll("[data-routine]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.routine; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
+  document.querySelectorAll("[data-startw]").forEach(el => el.onclick = (ev) => {
+    ev.stopPropagation(); S.routeCode = el.dataset.startw; S.workoutBlockId = null;
+    S.workoutExOpen = null; listMode = false; S.view = "workout"; S.render();
+  });
   document.querySelectorAll("[data-copyprompt]").forEach(el => el.onclick = () => {
     const exId = +el.dataset.copyprompt;
     let ex;
@@ -273,19 +299,29 @@ function setupDrag(w) {
 /* ── workout session view ────────────────────────────── */
 
 export function renderWorkout() {
-  const block = findBlock(S.workoutBlockId);
-  if (!block || !block.workout) { S.view = "plan"; S.render(); return; }
-  const w = workoutByCode(block.workout);
-  if (!w) { S.view = "plan"; S.render(); return; }
+  let w, block;
+  if (S.workoutBlockId) {
+    block = findBlock(S.workoutBlockId);
+    if (!block || !block.workout) { S.view = "plan"; S.render(); return; }
+    w = workoutByCode(block.workout);
+  } else if (S.routeCode) {
+    w = workoutByCode(S.routeCode);
+  }
+  if (!w) { S.view = block ? "plan" : "hub"; S.render(); return; }
 
   const sess = S.SESSIONS[w.id];
   if (sess && sess.finished_at) { S.view = "recap"; S.render(); return; }
 
-  const isToday = S.viewWd === S.todayWd;
+  const isToday = block ? (S.viewWd === S.todayWd) : true;
   const active = w.exercise.filter(e => !e.paused);
   const paused = w.exercise.filter(e => e.paused);
   const total = active.length;
   const doneCount = active.filter(e => S.LOGS[e.id]?.done).length;
+
+  if (!listMode && S.workoutExOpen == null && active.length > 0) {
+    const first = active.find(e => !S.LOGS[e.id]?.done) || active[0];
+    S.workoutExOpen = first.id;
+  }
 
   let h = `<div class="screen-top"><button class="backb" id="wkBack">‹</button>`
     + `<span class="wk-name">${esc(w.name || "Workout")}</span>`
@@ -297,63 +333,76 @@ export function renderWorkout() {
     h += `</div><div class="wk-count">${doneCount} of ${total} done</div>`;
   }
 
-  h += coachCardHtml("Ask about this routine — swap a move, check form, adjust load.");
+  if (total > 0) {
+    h += `<div class="wk-tabs">`
+      + `<button class="wk-tab ${!listMode ? "active" : ""}" id="tabFocus">Exercise</button>`
+      + `<button class="wk-tab ${listMode ? "active" : ""}" id="tabList">All exercises</button></div>`;
+  }
 
-  const sections = ["warmup", "main", "cooldown"];
-  const secLabel = { warmup: "Warm-up", main: "Main", cooldown: "Cooldown" };
-
-  sections.forEach(secKey => {
-    const secActive = active.filter(e => (e.section || "main") === secKey);
-    const secPaused = paused.filter(e => (e.section || "main") === secKey);
-    if (secActive.length === 0 && secPaused.length === 0) return;
-
-    const secDone = secActive.filter(e => S.LOGS[e.id]?.done).length;
-    h += `<div class="wk-sec-hdr">${secLabel[secKey]} <span class="wk-sec-count">${secDone}/${secActive.length}</span></div>`;
-
-    secActive.forEach((e, eIdx) => {
-      const lg = S.LOGS[e.id] || { done: false, feel: "" };
-
-      if (S.workoutExOpen === e.id) {
-        h += `<div class="wk-card" data-wkex="${e.id}">`;
-        const dm = demoMode(e.demo_slug);
-        if (dm === "animate") {
-          h += `<div class="demo-plate demo-anim">`
-            + `<img class="f0" src="${demoSrc(e.demo_slug, "_0.png")}" alt="" onerror="this.style.display='none'">`
-            + `<img class="f1" src="${demoSrc(e.demo_slug, "_1.png")}" alt="" onerror="this.parentNode.classList.add('no-f1')">`
-            + `</div>`;
-        } else if (dm === "static") {
-          const sfx = S.DEMO_SET.has(e.demo_slug + "_0.png") ? "_0.png" : ".png";
-          h += `<div class="demo-plate"><img src="${demoSrc(e.demo_slug, sfx)}" alt="" onerror="this.style.display='none'"></div>`;
-        }
-        h += `<div class="wk-card-name"><span class="wk-num ${lg.done ? "done" : ""}" style="margin-right:8px">${eIdx + 1}</span>${esc(e.name)}</div>`;
-        if (e.scheme) h += `<div class="wk-card-scheme">${esc(e.scheme)}</div>`;
-        if (e.cue) h += `<div class="wk-card-cue">${esc(e.cue)}</div>`;
-        if (dm === "none") h += `<button class="btn ghost demo-req" data-reqdem="1">Request a demo</button>`;
-        if (e.breathing) h += `<div class="wk-card-breath"><span>Breathing</span> ${esc(e.breathing)}</div>`;
-        if (isToday) {
-          h += `<div class="chips" style="margin:10px 0">`
-            + `<div class="copt ${lg.feel === "easy" ? "on" : ""}" data-feel="${e.id}" data-feelv="easy">Too easy</div>`
-            + `<div class="copt ${lg.feel === "right" ? "on" : ""}" data-feel="${e.id}" data-feelv="right">Just right</div>`
-            + `<div class="copt ${lg.feel === "hard" ? "on" : ""}" data-feel="${e.id}" data-feelv="hard">Too hard</div></div>`;
-          h += `<button class="btn ${lg.done ? "ghost" : "primary"}" data-exdone="${e.id}">${lg.done ? "Done ✓" : "Mark done"}</button>`;
-        }
-        h += `</div>`;
-      } else {
-        h += `<div class="wk-row ${lg.done ? "done" : ""}" data-wkex="${e.id}">`
+  if (listMode) {
+    h += coachCardHtml("Ask about this routine — swap a move, check form, adjust load.");
+    const sections = ["warmup", "main", "cooldown"];
+    const secLabel = { warmup: "Warm-up", main: "Main", cooldown: "Cooldown" };
+    sections.forEach(secKey => {
+      const secActive = active.filter(e => (e.section || "main") === secKey);
+      const secPaused = paused.filter(e => (e.section || "main") === secKey);
+      if (secActive.length === 0 && secPaused.length === 0) return;
+      const secDone = secActive.filter(e => S.LOGS[e.id]?.done).length;
+      h += `<div class="wk-sec-hdr">${secLabel[secKey]} <span class="wk-sec-count">${secDone}/${secActive.length}</span></div>`;
+      secActive.forEach((e, eIdx) => {
+        const lg = S.LOGS[e.id] || { done: false, feel: "" };
+        h += `<div class="wk-row" data-wkex="${e.id}">`
           + `<span class="wk-num ${lg.done ? "done" : ""}">${eIdx + 1}</span>`
           + `<span class="wk-row-name">${esc(e.name)}</span>`
           + (e.scheme ? `<span class="wk-row-scheme">${esc(e.scheme)}</span>` : "")
           + `</div>`;
+      });
+      if (secPaused.length > 0) {
+        const reason = secPaused[0].paused_reason || "";
+        h += `<div class="wk-paused">${secPaused.length} move${secPaused.length > 1 ? "s" : ""} paused`;
+        if (reason) h += ` — ${esc(reason)}`;
+        h += ` · <span class="wk-review" data-review="${w.code}">Review</span></div>`;
       }
     });
+  } else if (total > 0) {
+    const curEx = active.find(e => e.id === S.workoutExOpen) || active[0];
+    const curIdx = active.indexOf(curEx);
+    const lg = S.LOGS[curEx.id] || { done: false, feel: "" };
 
-    if (secPaused.length > 0) {
-      const reason = secPaused[0].paused_reason || "";
-      h += `<div class="wk-paused">${secPaused.length} move${secPaused.length > 1 ? "s" : ""} paused`;
-      if (reason) h += ` — ${esc(reason)}`;
-      h += ` · <span class="wk-review" data-review="${w.code}">Review</span></div>`;
+    h += `<div class="focus-card">`;
+    const dm = demoMode(curEx.demo_slug);
+    if (dm === "animate") {
+      h += `<div class="demo-plate demo-anim">`
+        + `<img class="f0" src="${demoSrc(curEx.demo_slug, "_0.png")}" alt="" onerror="this.style.display='none'">`
+        + `<img class="f1" src="${demoSrc(curEx.demo_slug, "_1.png")}" alt="" onerror="this.parentNode.classList.add('no-f1')">`
+        + `</div>`;
+    } else if (dm === "static") {
+      const sfx = S.DEMO_SET.has(curEx.demo_slug + "_0.png") ? "_0.png" : ".png";
+      h += `<div class="demo-plate"><img src="${demoSrc(curEx.demo_slug, sfx)}" alt="" onerror="this.style.display='none'"></div>`;
     }
-  });
+
+    h += `<div class="focus-name"><span class="wk-num ${lg.done ? "done" : ""}">${curIdx + 1}</span>${esc(curEx.name)}</div>`;
+    if (curEx.scheme) h += schemeGrid(curEx.scheme);
+    if (curEx.cue) h += `<div class="focus-cue">${esc(curEx.cue)}</div>`;
+    if (dm === "none") h += `<button class="btn ghost demo-req" data-reqdem="1">Request a demo</button>`;
+
+    if (isToday) {
+      h += `<div class="chips" style="margin:14px 0">`
+        + `<div class="copt ${lg.feel === "easy" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="easy">Too easy</div>`
+        + `<div class="copt ${lg.feel === "right" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="right">Just right</div>`
+        + `<div class="copt ${lg.feel === "hard" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="hard">Too hard</div></div>`;
+      h += `<button class="btn ${lg.done ? "ghost" : "primary"} focus-done" data-exdone="${curEx.id}">${lg.done ? "Done ✓" : "Mark done"}</button>`;
+    }
+
+    h += `<div class="focus-nav">`;
+    h += curIdx > 0
+      ? `<button class="btn ghost focus-prev" data-focusnav="${active[curIdx - 1].id}">‹ Prev</button>`
+      : `<span></span>`;
+    h += curIdx < active.length - 1
+      ? `<button class="btn ghost focus-next" data-focusnav="${active[curIdx + 1].id}">Next ›</button>`
+      : `<span></span>`;
+    h += `</div></div>`;
+  }
 
   if (w.exercise.length === 0) {
     h += `<div class="hint" style="margin:16px 2px">This routine has no exercises yet.</div>`;
@@ -371,14 +420,26 @@ export function renderWorkout() {
 }
 
 function wireWorkout(w, isToday) {
-  document.getElementById("wkBack").onclick = () => { S.view = "plan"; S.workoutBlockId = null; S.workoutExOpen = null; S.render(); };
+  document.getElementById("wkBack").onclick = () => {
+    S.view = S.workoutBlockId ? "plan" : "hub";
+    S.workoutBlockId = null; S.workoutExOpen = null; listMode = false; S.render();
+  };
   const editBtn = document.getElementById("wkEdit") || document.getElementById("wkEdit2");
   if (editBtn) editBtn.onclick = () => { S.routeCode = w.code; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); };
 
-  document.querySelectorAll("[data-wkex]").forEach(el => el.onclick = () => {
-    const id = +el.dataset.wkex;
-    S.workoutExOpen = (S.workoutExOpen === id) ? null : id;
-    S.render();
+  const tf = document.getElementById("tabFocus");
+  const tl = document.getElementById("tabList");
+  if (tf) tf.onclick = () => { listMode = false; S.render(); };
+  if (tl) tl.onclick = () => { listMode = true; S.render(); };
+
+  if (listMode) {
+    document.querySelectorAll("[data-wkex]").forEach(el => el.onclick = () => {
+      S.workoutExOpen = +el.dataset.wkex; listMode = false; S.render();
+    });
+  }
+
+  document.querySelectorAll("[data-focusnav]").forEach(el => el.onclick = () => {
+    S.workoutExOpen = +el.dataset.focusnav; S.render();
   });
 
   if (isToday) {
@@ -386,11 +447,18 @@ function wireWorkout(w, isToday) {
     document.querySelectorAll("[data-exdone]").forEach(el => el.onclick = async (ev) => {
       ev.stopPropagation();
       await ensureSession(w.id);
-      await toggleExercise(+el.dataset.exdone);
+      const exId = +el.dataset.exdone;
+      await toggleExercise(exId);
       const allActive = w.exercise.filter(e => !e.paused);
+      if (!listMode && S.LOGS[exId]?.done) {
+        const idx = allActive.findIndex(e => e.id === exId);
+        const next = allActive.slice(idx + 1).find(e => !S.LOGS[e.id]?.done)
+          || allActive.find(e => !S.LOGS[e.id]?.done);
+        if (next) { S.workoutExOpen = next.id; S.render(); return; }
+      }
       if (allActive.length > 0 && allActive.every(e => S.LOGS[e.id]?.done)) {
         await finishSession(w.id);
-        S.view = "recap"; S.workoutExOpen = null;
+        S.view = "recap"; S.workoutExOpen = null; listMode = false;
         if (S.workoutBlockId && !S.BDONE[S.workoutBlockId]) await markBlockDone(S.workoutBlockId);
         else S.render();
       }
@@ -400,7 +468,7 @@ function wireWorkout(w, isToday) {
     if (fin) fin.onclick = async () => {
       await ensureSession(w.id);
       await finishSession(w.id);
-      S.view = "recap"; S.workoutExOpen = null;
+      S.view = "recap"; S.workoutExOpen = null; listMode = false;
       if (S.workoutBlockId && !S.BDONE[S.workoutBlockId]) await markBlockDone(S.workoutBlockId);
       else S.render();
     };
@@ -418,10 +486,15 @@ function fmtClock(d) {
 }
 
 export function renderRecap() {
-  const block = findBlock(S.workoutBlockId);
-  if (!block || !block.workout) { S.view = "plan"; S.render(); return; }
-  const w = workoutByCode(block.workout);
-  if (!w) { S.view = "plan"; S.render(); return; }
+  let w, block;
+  if (S.workoutBlockId) {
+    block = findBlock(S.workoutBlockId);
+    if (!block || !block.workout) { S.view = "plan"; S.render(); return; }
+    w = workoutByCode(block.workout);
+  } else if (S.routeCode) {
+    w = workoutByCode(S.routeCode);
+  }
+  if (!w) { S.view = block ? "plan" : "hub"; S.render(); return; }
   const sess = S.SESSIONS[w.id];
   if (!sess || !sess.finished_at) { S.view = "workout"; S.render(); return; }
 
@@ -485,7 +558,7 @@ export function renderRecap() {
   h += `</div>`;
 
   h += `<div class="recap-foot">Saved as you went.</div>`;
-  h += `<button class="btn primary" id="recapBack" style="width:100%">Back to today</button>`;
+  h += `<button class="btn primary" id="recapBack" style="width:100%">${S.workoutBlockId ? "Back to today" : "Back to Train"}</button>`;
   h += `</div>`;
 
   document.getElementById("wrap").innerHTML = h;
@@ -494,7 +567,8 @@ export function renderRecap() {
 
 function wireRecap(w) {
   document.getElementById("recapBack").onclick = () => {
-    S.view = "plan"; S.workoutBlockId = null; S.workoutExOpen = null; S.render();
+    S.view = S.workoutBlockId ? "plan" : "hub";
+    S.workoutBlockId = null; S.workoutExOpen = null; listMode = false; S.render();
   };
   document.querySelectorAll("[data-sfeel]").forEach(el => el.onclick = () => {
     setSessionFeel(w.id, el.dataset.sfeel);
