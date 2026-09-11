@@ -49,7 +49,7 @@ function schemeGrid(scheme) {
   if (wm) g += `<div class="focus-grid-col"><div class="focus-grid-val">${esc(wm[1].trim())}</div><div class="focus-grid-lbl">Weight</div></div>`;
   g += `</div>`;
   const extra = scheme.replace(m[0], "").replace(/@\s*[\d.]+\s*(?:kg|lb|lbs)?/i, "").replace(/^\s*[,/·\-–—]\s*/, "").trim();
-  if (extra) g += `<div class="focus-extra">${esc(extra)}</div>`;
+  if (extra) g = g.replace(`>Reps</div></div>`, `>Reps / ${esc(extra)}</div></div>`);
   return g;
 }
 
@@ -386,20 +386,21 @@ export function renderWorkout() {
     if (curEx.cue) h += `<div class="focus-cue">${esc(curEx.cue)}</div>`;
     if (dm === "none") h += `<button class="btn ghost demo-req" data-reqdem="1">Request a demo</button>`;
 
+    h += `<div class="focus-row">`;
+    h += curIdx > 0
+      ? `<button class="focus-nav-link" data-focusnav="${active[curIdx - 1].id}">‹ Prev</button>`
+      : `<span style="width:42px"></span>`;
     if (isToday) {
-      h += `<div class="chips" style="margin:14px 0">`
+      h += `<div class="chips">`
         + `<div class="copt ${lg.feel === "easy" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="easy">Too easy</div>`
         + `<div class="copt ${lg.feel === "right" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="right">Just right</div>`
         + `<div class="copt ${lg.feel === "hard" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="hard">Too hard</div></div>`;
+    } else {
+      h += `<span></span>`;
     }
-
-    h += `<div class="focus-nav">`;
-    h += curIdx > 0
-      ? `<button class="focus-nav-link" data-focusnav="${active[curIdx - 1].id}">‹ Prev</button>`
-      : `<span></span>`;
     h += curIdx < active.length - 1
       ? `<button class="focus-nav-link" data-focusnav="${active[curIdx + 1].id}">Next ›</button>`
-      : `<span></span>`;
+      : `<span style="width:42px"></span>`;
     h += `</div>`;
 
     if (isToday) {
