@@ -391,17 +391,21 @@ export function renderWorkout() {
         + `<div class="copt ${lg.feel === "easy" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="easy">Too easy</div>`
         + `<div class="copt ${lg.feel === "right" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="right">Just right</div>`
         + `<div class="copt ${lg.feel === "hard" ? "on" : ""}" data-feel="${curEx.id}" data-feelv="hard">Too hard</div></div>`;
-      h += `<button class="btn ${lg.done ? "ghost" : "primary"} focus-done" data-exdone="${curEx.id}">${lg.done ? "Done ✓" : "Mark done"}</button>`;
     }
 
     h += `<div class="focus-nav">`;
     h += curIdx > 0
-      ? `<button class="btn ghost focus-prev" data-focusnav="${active[curIdx - 1].id}">‹ Prev</button>`
+      ? `<button class="focus-nav-link" data-focusnav="${active[curIdx - 1].id}">‹ Prev</button>`
       : `<span></span>`;
     h += curIdx < active.length - 1
-      ? `<button class="btn ghost focus-next" data-focusnav="${active[curIdx + 1].id}">Next ›</button>`
+      ? `<button class="focus-nav-link" data-focusnav="${active[curIdx + 1].id}">Next ›</button>`
       : `<span></span>`;
-    h += `</div></div>`;
+    h += `</div>`;
+
+    if (isToday) {
+      h += `<button class="btn ${lg.done ? "ghost" : "primary"} focus-done" data-exdone="${curEx.id}">${lg.done ? "Done ✓" : "Mark done"}</button>`;
+    }
+    h += `</div>`;
   }
 
   if (w.exercise.length === 0) {
@@ -409,10 +413,6 @@ export function renderWorkout() {
     h += `<button class="btn primary" id="wkEdit2">Add exercises</button>`;
   } else if (total === 0 && paused.length > 0) {
     h += `<div class="hint" style="margin:16px 2px">All exercises are paused. Review them in the routine editor.</div>`;
-  }
-
-  if (isToday && total > 0) {
-    h += `<button class="btn primary wk-finish" id="wkFinish">Finish workout</button>`;
   }
 
   document.getElementById("wrap").innerHTML = h;
@@ -464,14 +464,6 @@ function wireWorkout(w, isToday) {
       }
     });
 
-    const fin = document.getElementById("wkFinish");
-    if (fin) fin.onclick = async () => {
-      await ensureSession(w.id);
-      await finishSession(w.id);
-      S.view = "recap"; S.workoutExOpen = null; listMode = false;
-      if (S.workoutBlockId && !S.BDONE[S.workoutBlockId]) await markBlockDone(S.workoutBlockId);
-      else S.render();
-    };
   }
 
   document.querySelectorAll("[data-review]").forEach(el => el.onclick = () => { S.routeCode = el.dataset.review; S.exEditId = null; S.exNew = null; S.view = "routine"; S.render(); });
