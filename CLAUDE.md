@@ -42,7 +42,7 @@ Database and edge functions on Supabase (project ref `nalxowbclhvopjqkvweh`).
 --dim:   #6f7883   labels, meta, times
 --acc:   #F5A623   AMBER — anything tappable
 --onacc: #150f05   text on amber
---done:  #a7712e   BRONZE — done only, fill never text
+--done:  #c9892e   BRONZE — done only, fill never text
 ```
 
 Amber means "you can act on this." Bronze means "done." No other semantic
