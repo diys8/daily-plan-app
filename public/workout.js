@@ -435,7 +435,7 @@ function wireWorkout(w, isToday) {
 
   if (listMode) {
     document.querySelectorAll("[data-wkex]").forEach(el => el.onclick = () => {
-      S.workoutExOpen = +el.dataset.wkex; listMode = false; S.render();
+      S.workoutExOpen = +el.dataset.wkex; listMode = false; S.render(); window.scrollTo(0, 0);
     });
   }
 

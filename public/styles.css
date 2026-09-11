@@ -238,7 +238,7 @@ input,textarea,select{font-family:inherit}
 /* workout session view */
 .wk-name{flex:1;font-weight:700;font-size:16px;color:var(--ink)}
 .wk-progress{display:flex;gap:2px;margin:12px 0 6px}
-.wk-seg{flex:1;height:4px;background:#4a5060;border-radius:2px}
+.wk-seg{flex:1;height:4px;background:#656d7d;border-radius:2px}
 .wk-seg.done{background:var(--acc)}
 .wk-count{font-size:11px;color:var(--dim);margin-bottom:6px}
 
